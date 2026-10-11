@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:indian_food_tracker/core/design_system/app_colors.dart';
 import 'package:indian_food_tracker/main.dart';
 
+const todaySubtitle = "Let's make today count.";
+
 /// Finds a label inside the tab bar only (page titles share the same words).
 Finder tabItem(String label) => find.descendant(
       of: find.byType(CupertinoTabBar),
@@ -20,12 +22,11 @@ const placeholderMessages = <String, String>{
 };
 
 void main() {
-  testWidgets('App launches and shows the Today shell', (tester) async {
+  testWidgets('App launches on the Today dashboard', (tester) async {
     await tester.pumpWidget(const IndianFoodTrackerApp());
 
-    // The large iOS-style title can render more than once internally.
-    expect(find.text('Today'), findsWidgets);
-    expect(find.text('Nothing logged yet'), findsOneWidget);
+    expect(tabItem('Today'), findsOneWidget);
+    expect(find.text(todaySubtitle), findsOneWidget);
   });
 
   testWidgets('Tab bar shows four destinations, Today selected',
@@ -48,7 +49,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(entry.value), findsOneWidget);
-      expect(find.text('Nothing logged yet'), findsNothing);
+      expect(find.text(todaySubtitle), findsNothing);
       expect(currentTabIndex(tester), expectedIndex);
       expectedIndex++;
     }
@@ -56,8 +57,19 @@ void main() {
     await tester.tap(tabItem('Today'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Nothing logged yet'), findsOneWidget);
+    expect(find.text(todaySubtitle), findsOneWidget);
     expect(currentTabIndex(tester), 0);
+  });
+
+  testWidgets('Settings shortcut on Today opens the Settings tab',
+      (tester) async {
+    await tester.pumpWidget(const IndianFoodTrackerApp());
+
+    await tester.tap(find.byKey(const ValueKey('today-settings-shortcut')));
+    await tester.pumpAndSettle();
+
+    expect(currentTabIndex(tester), 3);
+    expect(find.text(placeholderMessages['Settings']!), findsOneWidget);
   });
 
   testWidgets('Tab bar uses design-system colours in dark mode',

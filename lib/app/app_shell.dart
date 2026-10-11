@@ -46,18 +46,19 @@ class _AppShellState extends State<AppShell> {
     for (final tab in AppTab.values) tab: GlobalKey<NavigatorState>(),
   };
 
-  void _onTabTapped(int index) {
-    final tapped = AppTab.values[index];
-    if (tapped == _current) {
-      _navigatorKeys[tapped]!.currentState?.popUntil((route) => route.isFirst);
+  void _select(AppTab tab) {
+    if (tab == _current) {
+      _navigatorKeys[tab]!.currentState?.popUntil((route) => route.isFirst);
       return;
     }
-    setState(() => _current = tapped);
+    setState(() => _current = tab);
   }
 
   Widget _rootPage(AppTab tab) {
     return switch (tab) {
-      AppTab.today => const TodayPage(),
+      AppTab.today => TodayPage(
+          onOpenSettings: () => _select(AppTab.settings),
+        ),
       AppTab.search => const PlaceholderPage(
           title: 'Search',
           icon: CupertinoIcons.search,
@@ -108,7 +109,7 @@ class _AppShellState extends State<AppShell> {
           MediaQuery.withNoTextScaling(
             child: CupertinoTabBar(
               currentIndex: _current.index,
-              onTap: _onTabTapped,
+              onTap: (index) => _select(AppTab.values[index]),
               backgroundColor: AppColors.surface.resolveFrom(context),
               activeColor: AppColors.accent.resolveFrom(context),
               inactiveColor: AppColors.textSecondary.resolveFrom(context),

@@ -50,7 +50,8 @@ abstract final class AppColors {
     darkColor: Color(0xFF2A2825),
   );
 
-  /// Hairline dividers. Decorative only — never the sole carrier of meaning.
+  /// Hairline dividers and progress tracks. Decorative only — never the
+  /// sole carrier of meaning.
   static const CupertinoDynamicColor separator =
       CupertinoDynamicColor.withBrightness(
     color: Color(0xFFDDD8D0),
@@ -153,5 +154,12 @@ abstract final class AppColors {
       CupertinoDynamicColor.withBrightness(
     color: Color(0xFF8A4A7A),
     darkColor: Color(0xFFCFA0C4),
+  );
+
+  /// Fibre — muted moss. Worst case: 5.08:1 light, 7.66:1 dark.
+  static const CupertinoDynamicColor fibre =
+      CupertinoDynamicColor.withBrightness(
+    color: Color(0xFF4F6B2E),
+    darkColor: Color(0xFFA9C48A),
   );
 }

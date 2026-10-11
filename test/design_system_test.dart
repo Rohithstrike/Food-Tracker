@@ -60,6 +60,7 @@ List<ContrastPair> intendedPairs() {
     ('protein', AppColors.protein),
     ('carbs', AppColors.carbs),
     ('fat', AppColors.fat),
+    ('fibre', AppColors.fibre),
   ];
   for (final (colourName, colour) in coloured) {
     for (final (surfaceName, surface) in textSurfaces) {
@@ -146,23 +147,23 @@ void main() {
     });
   });
 
-  testWidgets('Today screen uses design-system text colours in dark mode',
+  testWidgets('Today greeting uses design-system text colours in dark mode',
       (tester) async {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await tester.pumpWidget(const IndianFoodTrackerApp());
 
-    final title = tester.widget<Text>(find.text('Nothing logged yet'));
-    final message =
-        tester.widget<Text>(find.text('Your meals for today will appear here.'));
+    final greeting = tester.widget<Text>(find.textContaining('Good '));
+    final subtitle =
+        tester.widget<Text>(find.text("Let's make today count."));
 
     expect(
-      title.style?.color?.toARGB32(),
+      greeting.style?.color?.toARGB32(),
       AppColors.textPrimary.darkColor.toARGB32(),
     );
     expect(
-      message.style?.color?.toARGB32(),
+      subtitle.style?.color?.toARGB32(),
       AppColors.textSecondary.darkColor.toARGB32(),
     );
   });
