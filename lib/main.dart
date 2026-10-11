@@ -1,21 +1,26 @@
 import 'package:flutter/cupertino.dart';
 
+import 'core/design_system/app_colors.dart';
+import 'core/design_system/app_spacing.dart';
+import 'core/design_system/app_theme.dart';
+import 'core/design_system/app_typography.dart';
+
 void main() {
   runApp(const IndianFoodTrackerApp());
 }
 
 /// Root of the application.
-/// Uses CupertinoApp so the app follows iOS design conventions.
-/// Brightness is not fixed, so it follows the system light/dark setting.
+/// The theme follows the system light/dark appearance.
 class IndianFoodTrackerApp extends StatelessWidget {
   const IndianFoodTrackerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const CupertinoApp(
+    return CupertinoApp(
       title: 'Indian Food Tracker',
       debugShowCheckedModeBanner: false,
-      home: TodayShell(),
+      theme: AppTheme.build(),
+      home: const TodayShell(),
     );
   }
 }
@@ -27,9 +32,8 @@ class TodayShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = CupertinoTheme.of(context).textTheme;
-    final secondaryColor =
-        CupertinoColors.secondaryLabel.resolveFrom(context);
+    final textPrimary = AppColors.textPrimary.resolveFrom(context);
+    final textSecondary = AppColors.textSecondary.resolveFrom(context);
 
     return CupertinoPageScaffold(
       child: CustomScrollView(
@@ -41,26 +45,29 @@ class TodayShell extends StatelessWidget {
             hasScrollBody: false,
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.all(32),
+                padding: AppSpacing.pageHorizontal,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       CupertinoIcons.square_list,
-                      size: 48,
-                      color: secondaryColor,
+                      size: AppIconSize.emptyState,
+                      color: textSecondary,
+                      semanticLabel: 'Empty meal list',
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     Text(
                       'Nothing logged yet',
-                      style: textTheme.navTitleTextStyle,
+                      style: AppTypography.headline.copyWith(
+                        color: textPrimary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.itemGapTight),
                     Text(
                       'Your meals for today will appear here.',
-                      style: textTheme.textStyle.copyWith(
-                        color: secondaryColor,
+                      style: AppTypography.subheadline.copyWith(
+                        color: textSecondary,
                       ),
                       textAlign: TextAlign.center,
                     ),
