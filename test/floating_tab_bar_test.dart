@@ -122,7 +122,7 @@ void main() {
 
     expect(
       tester.getSemantics(find.byKey(const ValueKey('tab-today'))),
-      containsSemantics(
+      isSemantics(
         label: 'Today',
         isButton: true,
         isSelected: true,
@@ -131,7 +131,7 @@ void main() {
     );
     expect(
       tester.getSemantics(find.byKey(const ValueKey('tab-search'))),
-      containsSemantics(label: 'Search', isButton: true, isSelected: false),
+      isSemantics(label: 'Search', isButton: true, isSelected: false),
     );
     handle.dispose();
   });
