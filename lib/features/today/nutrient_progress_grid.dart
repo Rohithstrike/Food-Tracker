@@ -28,7 +28,8 @@ class NutrientProgressGrid extends StatelessWidget {
           builder: (context, constraints) {
             final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
             final tileWidth = (constraints.maxWidth - AppSpacing.md) / 2;
-            final twoColumns = textScale <= _twoColumnMaxTextScale &&
+            final twoColumns =
+                textScale <= _twoColumnMaxTextScale &&
                 tileWidth >= _minTileWidth;
 
             final tiles = [
@@ -69,11 +70,11 @@ class NutrientProgressGrid extends StatelessWidget {
   }
 
   static List<Widget> _withGaps(List<Widget> children) => [
-        for (var i = 0; i < children.length; i++) ...[
-          if (i > 0) const SizedBox(height: AppSpacing.lg),
-          children[i],
-        ],
-      ];
+    for (var i = 0; i < children.length; i++) ...[
+      if (i > 0) const SizedBox(height: AppSpacing.lg),
+      children[i],
+    ],
+  ];
 }
 
 /// One nutrient: colour dot + name, consumed / target, progress bar.

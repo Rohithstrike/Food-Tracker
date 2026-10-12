@@ -42,13 +42,25 @@ List<ContrastPair> intendedPairs() {
   // Primary/secondary text and accent: allowed on every surface.
   for (final (surfaceName, surface) in allSurfaces) {
     pairs
-      ..add(('textPrimary on $surfaceName', AppColors.textPrimary, surface,
-          normalText))
-      ..add(('textSecondary on $surfaceName', AppColors.textSecondary,
-          surface, normalText))
+      ..add((
+        'textPrimary on $surfaceName',
+        AppColors.textPrimary,
+        surface,
+        normalText,
+      ))
+      ..add((
+        'textSecondary on $surfaceName',
+        AppColors.textSecondary,
+        surface,
+        normalText,
+      ))
       ..add(('accent on $surfaceName', AppColors.accent, surface, normalText))
-      ..add(('textTertiary on $surfaceName', AppColors.textTertiary, surface,
-          largeOrHint));
+      ..add((
+        'textTertiary on $surfaceName',
+        AppColors.textTertiary,
+        surface,
+        largeOrHint,
+      ));
   }
 
   // Status and nutrition colours: small text allowed on main surfaces only
@@ -69,8 +81,12 @@ List<ContrastPair> intendedPairs() {
   }
 
   // Label on a filled accent button.
-  pairs.add(('onAccent on accent', AppColors.onAccent, AppColors.accent,
-      normalText));
+  pairs.add((
+    'onAccent on accent',
+    AppColors.onAccent,
+    AppColors.accent,
+    normalText,
+  ));
 
   return pairs;
 }
@@ -147,16 +163,16 @@ void main() {
     });
   });
 
-  testWidgets('Today greeting uses design-system text colours in dark mode',
-      (tester) async {
+  testWidgets('Today greeting uses design-system text colours in dark mode', (
+    tester,
+  ) async {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await tester.pumpWidget(const IndianFoodTrackerApp());
 
     final greeting = tester.widget<Text>(find.textContaining('Good '));
-    final subtitle =
-        tester.widget<Text>(find.text("Let's make today count."));
+    final subtitle = tester.widget<Text>(find.text("Let's make today count."));
 
     expect(
       greeting.style?.color?.toARGB32(),

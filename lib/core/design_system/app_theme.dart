@@ -18,14 +18,16 @@ abstract final class AppTheme {
       textTheme: CupertinoTextThemeData(
         primaryColor: AppColors.accent,
         textStyle: AppTypography.body.copyWith(color: AppColors.textPrimary),
-        actionTextStyle:
-            AppTypography.body.copyWith(color: AppColors.accent),
-        navTitleTextStyle:
-            AppTypography.headline.copyWith(color: AppColors.textPrimary),
-        navLargeTitleTextStyle:
-            AppTypography.largeTitle.copyWith(color: AppColors.textPrimary),
-        navActionTextStyle:
-            AppTypography.body.copyWith(color: AppColors.accent),
+        actionTextStyle: AppTypography.body.copyWith(color: AppColors.accent),
+        navTitleTextStyle: AppTypography.headline.copyWith(
+          color: AppColors.textPrimary,
+        ),
+        navLargeTitleTextStyle: AppTypography.largeTitle.copyWith(
+          color: AppColors.textPrimary,
+        ),
+        navActionTextStyle: AppTypography.body.copyWith(
+          color: AppColors.accent,
+        ),
       ),
     );
   }

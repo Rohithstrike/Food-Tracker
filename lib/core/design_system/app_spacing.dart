@@ -51,8 +51,9 @@ abstract final class AppSpacing {
   // ---------------------------------------------------------------------------
 
   /// Horizontal page margins only.
-  static const EdgeInsets pageHorizontal =
-      EdgeInsets.symmetric(horizontal: pageMargin);
+  static const EdgeInsets pageHorizontal = EdgeInsets.symmetric(
+    horizontal: pageMargin,
+  );
 
   /// Padding inside a grouped section or card.
   static const EdgeInsets sectionInsets = EdgeInsets.all(sectionPadding);
@@ -76,9 +77,11 @@ abstract final class AppRadius {
   static const double capsule = 999;
 
   static const BorderRadius smallAll = BorderRadius.all(Radius.circular(small));
-  static const BorderRadius mediumAll =
-      BorderRadius.all(Radius.circular(medium));
+  static const BorderRadius mediumAll = BorderRadius.all(
+    Radius.circular(medium),
+  );
   static const BorderRadius largeAll = BorderRadius.all(Radius.circular(large));
-  static const BorderRadius capsuleAll =
-      BorderRadius.all(Radius.circular(capsule));
+  static const BorderRadius capsuleAll = BorderRadius.all(
+    Radius.circular(capsule),
+  );
 }

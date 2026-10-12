@@ -73,8 +73,9 @@ void main() {
       });
     }
 
-    testWidgets('updates when the app stays open across a boundary',
-        (tester) async {
+    testWidgets('updates when the app stays open across a boundary', (
+      tester,
+    ) async {
       var now = DateTime(2026, 1, 1, 11, 59);
       await pumpToday(tester, clock: () => now);
       expect(find.text('Good morning'), findsOneWidget);

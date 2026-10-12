@@ -103,8 +103,8 @@ class NutrientProgress {
     required this.nutrient,
     required this.consumedGrams,
     required this.targetGrams,
-  })  : assert(consumedGrams >= 0),
-        assert(targetGrams >= 0);
+  }) : assert(consumedGrams >= 0),
+       assert(targetGrams >= 0);
 
   final Nutrient nutrient;
   final double consumedGrams;
@@ -118,7 +118,7 @@ class NutrientProgress {
 
   String get semanticsLabel => hasTarget
       ? '${nutrient.label}: ${formatGrams(consumedGrams)} of '
-          '${formatGrams(targetGrams)} grams'
+            '${formatGrams(targetGrams)} grams'
       : '${nutrient.label}: ${formatGrams(consumedGrams)} grams, no target';
 }
 
@@ -128,8 +128,8 @@ class NutrientProgress {
 
 class CalorieProgress {
   const CalorieProgress({required this.consumed, required this.goal})
-      : assert(consumed >= 0),
-        assert(goal >= 0);
+    : assert(consumed >= 0),
+      assert(goal >= 0);
 
   final int consumed;
 

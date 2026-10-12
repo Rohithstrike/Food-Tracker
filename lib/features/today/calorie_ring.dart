@@ -66,8 +66,10 @@ class CalorieRing extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         // ~60% of the content width: prominent, but meals stay reachable.
-        final diameter =
-            (constraints.maxWidth * 0.6).clamp(_minDiameter, _maxDiameter);
+        final diameter = (constraints.maxWidth * 0.6).clamp(
+          _minDiameter,
+          _maxDiameter,
+        );
 
         return SizedBox.square(
           dimension: diameter,
