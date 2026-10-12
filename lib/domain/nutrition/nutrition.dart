@@ -26,7 +26,7 @@ enum NutrientKind {
 /// A non-negative nutrient amount, in thousandths of its unit.
 final class NutrientAmount {
   const NutrientAmount.milli(this.milli)
-      : assert(milli >= 0, 'Nutrient amounts cannot be negative.');
+    : assert(milli >= 0, 'Nutrient amounts cannot be negative.');
 
   /// Converts a value in whole units (for example 1.5 g) to a fixed-point
   /// amount. Resolution is 0.001 of the unit; finer detail is rounded.
@@ -46,8 +46,6 @@ final class NutrientAmount {
   /// Upper bound for a single input value, in whole units.
   static const int maxUnits = 1000000;
 
-  static const List<int> _roundingSteps = [1000, 100, 10, 1];
-
   /// Amount in thousandths of the unit.
   final int milli;
 
@@ -60,8 +58,13 @@ final class NutrientAmount {
     if (decimals < 0 || decimals > 3) {
       throw RangeError.range(decimals, 0, 3, 'decimals');
     }
-    final step = _roundingSteps[decimals];
-    final rounded = (milli + step ~/ 2) ~/ step * step;
+    final int step = switch (decimals) {
+      0 => 1000,
+      1 => 100,
+      2 => 10,
+      _ => 1,
+    };
+    final int rounded = (milli + step ~/ 2) ~/ step * step;
     return rounded / 1000;
   }
 
@@ -79,7 +82,7 @@ final class NutrientAmount {
 /// A set of nutrient amounts. Kinds without an entry are UNKNOWN.
 final class NutrientProfile {
   NutrientProfile(Map<NutrientKind, NutrientAmount> known)
-      : known = Map<NutrientKind, NutrientAmount>.unmodifiable(known);
+    : known = Map<NutrientKind, NutrientAmount>.unmodifiable(known);
 
   /// Values per 100 g of the food as eaten.
   ///
@@ -94,7 +97,7 @@ final class NutrientProfile {
     required num? sugarG,
     required num? sodiumMg,
   }) {
-    final values = <NutrientKind, num?>{
+    final Map<NutrientKind, num?> values = {
       NutrientKind.energy: energyKcal,
       NutrientKind.protein: proteinG,
       NutrientKind.carbohydrates: carbohydratesG,
@@ -103,22 +106,28 @@ final class NutrientProfile {
       NutrientKind.sugar: sugarG,
       NutrientKind.sodium: sodiumMg,
     };
-    return NutrientProfile({
-      for (final entry in values.entries)
-        if (entry.value != null) entry.key: NutrientAmount.of(entry.value!),
-    });
+    final Map<NutrientKind, NutrientAmount> known = {};
+    for (final MapEntry<NutrientKind, num?> entry in values.entries) {
+      final num? value = entry.value;
+      if (value != null) {
+        known[entry.key] = NutrientAmount.of(value);
+      }
+    }
+    return NutrientProfile(known);
   }
 
   /// Known amounts only.
   final Map<NutrientKind, NutrientAmount> known;
 
   /// The amount for [kind], or null when it is unknown.
-  NutrientAmount? operator NutrientKind kind => known[kind];
+  NutrientAmount? amountOf(NutrientKind kind) => known[kind];
+
+  /// Index form of [amountOf]: profile[NutrientKind.fat].
+  NutrientAmount? operator [](NutrientKind kind) => known[kind];
 
   bool isKnown(NutrientKind kind) => known.containsKey(kind);
 
-  Set<NutrientKind> get unknownKinds => {
-        for (final kind in NutrientKind.values)
-          if (!known.containsKey(kind)) kind,
-      };
+  Set<NutrientKind> get unknownKinds => NutrientKind.values
+      .where((NutrientKind kind) => !known.containsKey(kind))
+      .toSet();
 }

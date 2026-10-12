@@ -24,19 +24,19 @@ final class Serving {
     required num grams,
     required this.weightBasis,
     this.note,
-  })  : id = _requireText(id, 'id'),
-        singularLabel = _requireText(singularLabel, 'singularLabel'),
-        pluralLabel = _requireText(pluralLabel, 'pluralLabel'),
-        milligrams = _gramsToMilligrams(grams);
+  }) : id = _requireText(id, 'id'),
+       singularLabel = _requireText(singularLabel, 'singularLabel'),
+       pluralLabel = _requireText(pluralLabel, 'pluralLabel'),
+       milligrams = _gramsToMilligrams(grams);
 
   /// The 1 g serving that every food has automatically.
   factory Serving.gram() => Serving(
-        id: gramId,
-        singularLabel: 'g',
-        pluralLabel: 'g',
-        grams: 1,
-        weightBasis: ServingWeightBasis.exact,
-      );
+    id: gramId,
+    singularLabel: 'g',
+    pluralLabel: 'g',
+    grams: 1,
+    weightBasis: ServingWeightBasis.exact,
+  );
 
   static const String gramId = 'g';
 
@@ -68,7 +68,7 @@ int _gramsToMilligrams(num grams) {
       'must be a positive weight up to ${Serving.maxGrams} g',
     );
   }
-  final milligrams = (grams * 1000).round();
+  final int milligrams = (grams * 1000).round();
   if (milligrams <= 0) {
     throw ArgumentError.value(grams, 'grams', 'is too small (minimum 1 mg)');
   }
@@ -76,7 +76,7 @@ int _gramsToMilligrams(num grams) {
 }
 
 String _requireText(String value, String name) {
-  final trimmed = value.trim();
+  final String trimmed = value.trim();
   if (trimmed.isEmpty) {
     throw ArgumentError.value(value, name, 'must not be empty');
   }

@@ -98,14 +98,20 @@ final class NutritionTotals {
     required this.isEstimate,
   }) : byKind = Map<NutrientKind, NutrientTotal>.unmodifiable(byKind);
 
+  /// One entry for EVERY NutrientKind (built by NutritionEngine.total).
   final Map<NutrientKind, NutrientTotal> byKind;
   final int itemCount;
   final bool isSample;
   final bool isEstimate;
 
-  NutrientTotal operator NutrientKind kind => byKind[kind]!;
+  /// The total for [kind]. Always present.
+  NutrientTotal totalOf(NutrientKind kind) => byKind[kind]!;
 
-  bool get isComplete => byKind.values.every((total) => total.isComplete);
+  /// Index form of [totalOf]: totals[NutrientKind.energy].
+  NutrientTotal operator [](NutrientKind kind) => totalOf(kind);
+
+  bool get isComplete =>
+      byKind.values.every((NutrientTotal total) => total.isComplete);
 }
 
 abstract final class NutritionEngine {
@@ -136,7 +142,7 @@ abstract final class NutritionEngine {
         'Quantity is larger than allowed.',
       );
     }
-    final quantityMilli = (quantity * 1000).round();
+    final int quantityMilli = (quantity * 1000).round();
     if (quantityMilli <= 0) {
       throw const NutritionInputException(
         NutritionInputError.invalidQuantity,
@@ -144,7 +150,7 @@ abstract final class NutritionEngine {
       );
     }
 
-    final serving = food.servingById(servingId);
+    final Serving? serving = food.servingById(servingId);
     if (serving == null) {
       throw NutritionInputException(
         NutritionInputError.unknownServing,
@@ -163,7 +169,7 @@ abstract final class NutritionEngine {
       }
     }
 
-    final totalMilligrams = _roundHalfUp(
+    final int totalMilligrams = _roundHalfUp(
       BigInt.from(serving.milligrams) * BigInt.from(quantityMilli),
       _thousand,
     );
@@ -174,18 +180,24 @@ abstract final class NutritionEngine {
       );
     }
 
-    final scaled = <NutrientKind, NutrientAmount>{};
-    for (final entry in food.per100g.known.entries) {
-      final factor = variant?.factorPermilleFor(entry.key) ?? 1000;
-      final numerator = BigInt.from(entry.value.milli) *
+    final Map<NutrientKind, NutrientAmount> scaled =
+        <NutrientKind, NutrientAmount>{};
+    for (final MapEntry<NutrientKind, NutrientAmount> entry
+        in food.per100g.known.entries) {
+      final NutrientKind kind = entry.key;
+      final NutrientAmount per100 = entry.value;
+      final int factor = variant?.factorPermilleFor(kind) ?? 1000;
+      final BigInt numerator =
+          BigInt.from(per100.milli) *
           BigInt.from(serving.milligrams) *
           BigInt.from(quantityMilli) *
           BigInt.from(factor);
-      scaled[entry.key] =
-          NutrientAmount.milli(_roundHalfUp(numerator, _denominator));
+      scaled[kind] = NutrientAmount.milli(
+        _roundHalfUp(numerator, _denominator),
+      );
     }
 
-    final assumptions = <String>[];
+    final List<String> assumptions = <String>[];
     switch (food.status) {
       case DataStatus.sample:
         assumptions.add(
@@ -199,7 +211,7 @@ abstract final class NutritionEngine {
       case DataStatus.verified:
         break;
     }
-    final estimatedWeight =
+    final bool estimatedWeight =
         serving.weightBasis == ServingWeightBasis.estimated;
     if (estimatedWeight) {
       assumptions.add(
@@ -207,9 +219,10 @@ abstract final class NutritionEngine {
         '(${_formatGrams(serving.milligrams)} g) is estimated.',
       );
     }
-    final variantEstimate = variant?.isEstimate ?? false;
-    if (variantEstimate) {
-      assumptions.add(variant!.assumption);
+    bool variantEstimate = false;
+    if (variant != null && variant.isEstimate) {
+      variantEstimate = true;
+      assumptions.add(variant.assumption);
     }
 
     return CalculatedNutrition(
@@ -220,7 +233,8 @@ abstract final class NutritionEngine {
       totalMilligrams: totalMilligrams,
       nutrients: NutrientProfile(scaled),
       isSample: food.isSample,
-      isEstimate: food.status == DataStatus.recipeEstimate ||
+      isEstimate:
+          food.status == DataStatus.recipeEstimate ||
           estimatedWeight ||
           variantEstimate,
       assumptions: assumptions,
@@ -230,32 +244,32 @@ abstract final class NutritionEngine {
   /// Adds up items. Unknown values are NOT treated as zero: each nutrient
   /// total counts how many items were missing it.
   static NutritionTotals total(Iterable<CalculatedNutrition> items) {
-    final list = items.toList();
-    final sums = {for (final kind in NutrientKind.values) kind: 0};
-    final missing = {for (final kind in NutrientKind.values) kind: 0};
+    final List<CalculatedNutrition> list = items.toList();
+    final Map<NutrientKind, NutrientTotal> byKind =
+        <NutrientKind, NutrientTotal>{};
 
-    for (final item in list) {
-      for (final kind in NutrientKind.values) {
-        final amount = item.nutrients[kind];
+    for (final NutrientKind kind in NutrientKind.values) {
+      int sumMilli = 0;
+      int missing = 0;
+      for (final CalculatedNutrition item in list) {
+        final NutrientAmount? amount = item.nutrients.amountOf(kind);
         if (amount == null) {
-          missing[kind] = missing[kind]! + 1;
+          missing += 1;
         } else {
-          sums[kind] = sums[kind]! + amount.milli;
+          sumMilli += amount.milli;
         }
       }
+      byKind[kind] = NutrientTotal(
+        amount: NutrientAmount.milli(sumMilli),
+        missingCount: missing,
+      );
     }
 
     return NutritionTotals._(
-      byKind: {
-        for (final kind in NutrientKind.values)
-          kind: NutrientTotal(
-            amount: NutrientAmount.milli(sums[kind]!),
-            missingCount: missing[kind]!,
-          ),
-      },
+      byKind: byKind,
       itemCount: list.length,
-      isSample: list.any((item) => item.isSample),
-      isEstimate: list.any((item) => item.isEstimate),
+      isSample: list.any((CalculatedNutrition item) => item.isSample),
+      isEstimate: list.any((CalculatedNutrition item) => item.isEstimate),
     );
   }
 

@@ -9,14 +9,14 @@ import 'package:indian_food_tracker/domain/nutrition/nutrition_engine.dart';
 // They are NOT real nutrition data for any food.
 
 NutrientProfile sampleProfile({num? sugarG}) => NutrientProfile.per100g(
-      energyKcal: 200,
-      proteinG: 5,
-      carbohydratesG: 40,
-      fatG: 2,
-      fibreG: 1.5,
-      sugarG: sugarG, // Unknown unless given.
-      sodiumMg: 300,
-    );
+  energyKcal: 200,
+  proteinG: 5,
+  carbohydratesG: 40,
+  fatG: 2,
+  fibreG: 1.5,
+  sugarG: sugarG, // Unknown unless given.
+  sodiumMg: 300,
+);
 
 Food foodWith({
   String name = 'SAMPLE Food X',
@@ -25,136 +25,156 @@ Food foodWith({
   List<CookingVariant> variants = const [],
   DataStatus status = DataStatus.sample,
   FoodSource? source,
-}) =>
-    Food(
-      id: 'sample_x',
-      name: name,
-      category: FoodCategory.dish,
-      region: FoodRegion.panIndian,
-      per100g: per100g ?? sampleProfile(),
-      servings: servings,
-      variants: variants,
-      status: status,
-      source: source,
-    );
+}) => Food(
+  id: 'sample_x',
+  name: name,
+  category: FoodCategory.dish,
+  region: FoodRegion.panIndian,
+  per100g: per100g ?? sampleProfile(),
+  servings: servings,
+  variants: variants,
+  status: status,
+  source: source,
+);
 
 Food sampleFoodA() => Food(
-      id: 'sample_a',
-      name: 'SAMPLE Food A',
-      aliases: const ['  Test   Alias  '],
-      category: FoodCategory.snack,
-      region: FoodRegion.southIndian,
-      status: DataStatus.sample,
-      per100g: sampleProfile(),
-      servings: [
-        Serving(
-          id: 'piece',
-          singularLabel: 'piece',
-          pluralLabel: 'pieces',
-          grams: 40,
-          weightBasis: ServingWeightBasis.estimated,
-        ),
-        Serving(
-          id: 'bowl',
-          singularLabel: 'bowl',
-          pluralLabel: 'bowls',
-          grams: 150,
-          weightBasis: ServingWeightBasis.estimated,
-        ),
-      ],
-      variants: [
-        CookingVariant(
-          id: 'more_oil',
-          label: 'More oil',
-          factors: const {NutrientKind.fat: 1.5, NutrientKind.energy: 1.1},
-          assumption:
-              'SAMPLE assumption: more oil raises fat by 50% and energy by 10%.',
-        ),
-      ],
-    );
+  id: 'sample_a',
+  name: 'SAMPLE Food A',
+  aliases: const ['  Test   Alias  '],
+  category: FoodCategory.snack,
+  region: FoodRegion.southIndian,
+  status: DataStatus.sample,
+  per100g: sampleProfile(),
+  servings: [
+    Serving(
+      id: 'piece',
+      singularLabel: 'piece',
+      pluralLabel: 'pieces',
+      grams: 40,
+      weightBasis: ServingWeightBasis.estimated,
+    ),
+    Serving(
+      id: 'bowl',
+      singularLabel: 'bowl',
+      pluralLabel: 'bowls',
+      grams: 150,
+      weightBasis: ServingWeightBasis.estimated,
+    ),
+  ],
+  variants: [
+    CookingVariant(
+      id: 'more_oil',
+      label: 'More oil',
+      factors: const {NutrientKind.fat: 1.5, NutrientKind.energy: 1.1},
+      assumption:
+          'SAMPLE assumption: more oil raises fat by 50% and energy by 10%.',
+    ),
+  ],
+);
 
 Food sampleFoodB() => Food(
-      id: 'sample_b',
-      name: 'SAMPLE Food B',
-      category: FoodCategory.beverage,
-      region: FoodRegion.panIndian,
-      status: DataStatus.sample,
-      per100g: NutrientProfile.per100g(
-        energyKcal: 100,
-        proteinG: 1,
-        carbohydratesG: 20,
-        fatG: 0,
-        fibreG: 0,
-        sugarG: 10,
-        sodiumMg: 0,
-      ),
-    );
+  id: 'sample_b',
+  name: 'SAMPLE Food B',
+  category: FoodCategory.beverage,
+  region: FoodRegion.panIndian,
+  status: DataStatus.sample,
+  per100g: NutrientProfile.per100g(
+    energyKcal: 100,
+    proteinG: 1,
+    carbohydratesG: 20,
+    fatG: 0,
+    fibreG: 0,
+    sugarG: 10,
+    sodiumMg: 0,
+  ),
+);
 
 CalculatedNutrition calc(
   Food food,
   String servingId,
   num quantity, {
   String? variantId,
-}) =>
-    NutritionEngine.calculate(
-      food: food,
-      servingId: servingId,
-      quantity: quantity,
-      variantId: variantId,
-    );
+}) => NutritionEngine.calculate(
+  food: food,
+  servingId: servingId,
+  quantity: quantity,
+  variantId: variantId,
+);
 
 Matcher throwsInput(NutritionInputError error) => throwsA(
-      isA<NutritionInputException>().having((e) => e.error, 'error', error),
-    );
+  isA<NutritionInputException>().having((e) => e.error, 'error', error),
+);
 
 void main() {
   group('Calculation', () {
     test('100 g equals the per-100 g values', () {
       final r = calc(sampleFoodA(), Serving.gramId, 100);
-      expect(r.nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(200000));
-      expect(r.nutrients[NutrientKind.sodium],
-          const NutrientAmount.milli(300000));
+      expect(
+        r.nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(200000),
+      );
+      expect(
+        r.nutrients[NutrientKind.sodium],
+        const NutrientAmount.milli(300000),
+      );
       expect(r.totalMilligrams, 100000);
     });
 
     test('household unit: 2 pieces of 40 g', () {
       final r = calc(sampleFoodA(), 'piece', 2);
       expect(r.totalMilligrams, 80000);
-      expect(r.nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(160000));
-      expect(r.nutrients[NutrientKind.protein],
-          const NutrientAmount.milli(4000));
+      expect(
+        r.nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(160000),
+      );
+      expect(
+        r.nutrients[NutrientKind.protein],
+        const NutrientAmount.milli(4000),
+      );
       expect(r.nutrients[NutrientKind.fibre], const NutrientAmount.milli(1200));
     });
 
     test('fractional household quantity: 1.5 bowls of 150 g', () {
       final r = calc(sampleFoodA(), 'bowl', 1.5);
       expect(r.totalMilligrams, 225000);
-      expect(r.nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(450000));
+      expect(
+        r.nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(450000),
+      );
       expect(r.nutrients[NutrientKind.fat], const NutrientAmount.milli(4500));
-      expect(r.nutrients[NutrientKind.carbohydrates],
-          const NutrientAmount.milli(90000));
+      expect(
+        r.nutrients[NutrientKind.carbohydrates],
+        const NutrientAmount.milli(90000),
+      );
     });
 
     test('grams: 250 g', () {
       final r = calc(sampleFoodA(), Serving.gramId, 250);
-      expect(r.nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(500000));
-      expect(r.nutrients[NutrientKind.sodium],
-          const NutrientAmount.milli(750000));
+      expect(
+        r.nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(500000),
+      );
+      expect(
+        r.nutrients[NutrientKind.sodium],
+        const NutrientAmount.milli(750000),
+      );
     });
 
     test('cooking variant changes only the listed nutrients', () {
       final r = calc(sampleFoodA(), 'piece', 1, variantId: 'more_oil');
-      expect(r.nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(88000));
+      expect(
+        r.nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(88000),
+      );
       expect(r.nutrients[NutrientKind.fat], const NutrientAmount.milli(1200));
-      expect(r.nutrients[NutrientKind.protein],
-          const NutrientAmount.milli(2000));
-      expect(r.nutrients[NutrientKind.carbohydrates],
-          const NutrientAmount.milli(16000));
+      expect(
+        r.nutrients[NutrientKind.protein],
+        const NutrientAmount.milli(2000),
+      );
+      expect(
+        r.nutrients[NutrientKind.carbohydrates],
+        const NutrientAmount.milli(16000),
+      );
     });
 
     test('exact grams without a variant is not an estimate', () {
@@ -207,26 +227,36 @@ void main() {
 
   group('Rounding', () {
     Food oneKcalFood() => foodWith(
-          per100g: NutrientProfile.per100g(
-            energyKcal: 1,
-            proteinG: null,
-            carbohydratesG: null,
-            fatG: null,
-            fibreG: null,
-            sugarG: null,
-            sodiumMg: null,
-          ),
-        );
+      per100g: NutrientProfile.per100g(
+        energyKcal: 1,
+        proteinG: null,
+        carbohydratesG: null,
+        fatG: null,
+        fibreG: null,
+        sugarG: null,
+        sodiumMg: null,
+      ),
+    );
 
     test('rounds once, half up, to 0.001 of the unit', () {
       // 1 kcal per 100 g x 0.15 g = 0.0015 kcal -> 0.002 kcal.
-      expect(calc(oneKcalFood(), Serving.gramId, 0.15)
-              .nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(2));
+      expect(
+        calc(
+          oneKcalFood(),
+          Serving.gramId,
+          0.15,
+        ).nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(2),
+      );
       // 1 kcal per 100 g x 0.14 g = 0.0014 kcal -> 0.001 kcal.
-      expect(calc(oneKcalFood(), Serving.gramId, 0.14)
-              .nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(1));
+      expect(
+        calc(
+          oneKcalFood(),
+          Serving.gramId,
+          0.14,
+        ).nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(1),
+      );
     });
 
     test('display rounding is half up', () {
@@ -234,8 +264,7 @@ void main() {
       expect(const NutrientAmount.milli(1239499).toUnits(decimals: 0), 1239);
       expect(const NutrientAmount.milli(1234449).toUnits(decimals: 1), 1234.4);
       expect(const NutrientAmount.milli(1234450).toUnits(decimals: 1), 1234.5);
-      expect(() => NutrientAmount.zero.toUnits(decimals: 4),
-          throwsRangeError);
+      expect(() => NutrientAmount.zero.toUnits(decimals: 4), throwsRangeError);
     });
 
     test('large values stay exact (no overflow)', () {
@@ -260,8 +289,10 @@ void main() {
       );
       // 900 kcal/100 g x 5000 g x 5.0 = 225,000 kcal.
       final r = calc(big, Serving.gramId, 5000, variantId: 'max');
-      expect(r.nutrients[NutrientKind.energy],
-          const NutrientAmount.milli(225000000));
+      expect(
+        r.nutrients[NutrientKind.energy],
+        const NutrientAmount.milli(225000000),
+      );
     });
   });
 
@@ -277,26 +308,36 @@ void main() {
     });
 
     test('quantities below 0.001 are rejected', () {
-      expect(() => calc(sampleFoodA(), Serving.gramId, 0.0004),
-          throwsInput(NutritionInputError.invalidQuantity));
+      expect(
+        () => calc(sampleFoodA(), Serving.gramId, 0.0004),
+        throwsInput(NutritionInputError.invalidQuantity),
+      );
     });
 
     test('quantity and total weight limits', () {
-      expect(() => calc(sampleFoodA(), 'piece', 20000),
-          throwsInput(NutritionInputError.quantityTooLarge));
-      expect(() => calc(sampleFoodA(), Serving.gramId, 6000),
-          throwsInput(NutritionInputError.quantityTooLarge));
+      expect(
+        () => calc(sampleFoodA(), 'piece', 20000),
+        throwsInput(NutritionInputError.quantityTooLarge),
+      );
+      expect(
+        () => calc(sampleFoodA(), Serving.gramId, 6000),
+        throwsInput(NutritionInputError.quantityTooLarge),
+      );
       expect(() => calc(sampleFoodA(), Serving.gramId, 5000), returnsNormally);
     });
 
     test('unknown serving is rejected', () {
-      expect(() => calc(sampleFoodA(), 'ladle', 1),
-          throwsInput(NutritionInputError.unknownServing));
+      expect(
+        () => calc(sampleFoodA(), 'ladle', 1),
+        throwsInput(NutritionInputError.unknownServing),
+      );
     });
 
     test('unknown variant is rejected', () {
-      expect(() => calc(sampleFoodA(), 'piece', 1, variantId: 'air_fried'),
-          throwsInput(NutritionInputError.unknownVariant));
+      expect(
+        () => calc(sampleFoodA(), 'piece', 1, variantId: 'air_fried'),
+        throwsInput(NutritionInputError.unknownVariant),
+      );
     });
   });
 
@@ -306,7 +347,7 @@ void main() {
       expect(() => NutrientAmount.of(double.nan), throwsArgumentError);
     });
 
-    test('serving weight must be positive and finite', () {
+    test('serving weight must be positive, finite and at most 5 kg', () {
       for (final grams in <num>[0, -5, double.nan, 6000]) {
         expect(
           () => Serving(
@@ -324,20 +365,17 @@ void main() {
 
     test('the 1 g serving is built in and cannot be redefined', () {
       expect(sampleFoodA().servings.first.id, Serving.gramId);
-      expect(
-        () => foodWith(servings: [Serving.gram()]),
-        throwsArgumentError,
-      );
+      expect(() => foodWith(servings: [Serving.gram()]), throwsArgumentError);
     });
 
     test('duplicate serving ids are rejected', () {
       Serving cup() => Serving(
-            id: 'cup',
-            singularLabel: 'cup',
-            pluralLabel: 'cups',
-            grams: 200,
-            weightBasis: ServingWeightBasis.estimated,
-          );
+        id: 'cup',
+        singularLabel: 'cup',
+        pluralLabel: 'cups',
+        grams: 200,
+        weightBasis: ServingWeightBasis.estimated,
+      );
       expect(() => foodWith(servings: [cup(), cup()]), throwsArgumentError);
     });
 
@@ -398,13 +436,17 @@ void main() {
         calc(sampleFoodB(), Serving.gramId, 100), // Fat is a known zero.
       ]);
       expect(totals.itemCount, 2);
-      expect(totals[NutrientKind.energy].amount,
-          const NutrientAmount.milli(180000));
+      expect(
+        totals[NutrientKind.energy].amount,
+        const NutrientAmount.milli(180000),
+      );
       expect(totals[NutrientKind.energy].isComplete, isTrue);
       expect(totals[NutrientKind.fat].amount, const NutrientAmount.milli(800));
       expect(totals[NutrientKind.fat].isComplete, isTrue);
-      expect(totals[NutrientKind.sugar].amount,
-          const NutrientAmount.milli(10000));
+      expect(
+        totals[NutrientKind.sugar].amount,
+        const NutrientAmount.milli(10000),
+      );
       expect(totals[NutrientKind.sugar].missingCount, 1);
       expect(totals.isComplete, isFalse);
       expect(totals.isSample, isTrue);

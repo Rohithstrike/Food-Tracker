@@ -60,9 +60,10 @@ final class CookingVariant {
     required this.label,
     required Map<NutrientKind, num> factors,
     required this.assumption,
-  })  : id = _requireText(id, 'id'),
-        factorsPermille =
-            Map<NutrientKind, int>.unmodifiable(_toPermille(factors)) {
+  }) : id = _requireText(id, 'id'),
+       factorsPermille = Map<NutrientKind, int>.unmodifiable(
+         _toPermille(factors),
+       ) {
     if (factorsPermille.isNotEmpty && assumption.trim().isEmpty) {
       throw ArgumentError.value(
         assumption,
@@ -96,24 +97,25 @@ final class Food {
   Food({
     required String id,
     required String name,
-    List<String> aliases = const [],
+    List<String> aliases = const <String>[],
     required this.category,
     required this.region,
     required this.per100g,
-    List<Serving> servings = const [],
-    List<CookingVariant> variants = const [],
+    List<Serving> servings = const <Serving>[],
+    List<CookingVariant> variants = const <CookingVariant>[],
     required this.status,
     this.source,
-  })  : id = _requireText(id, 'id'),
-        name = _requireText(name, 'name'),
-        aliases = List<String>.unmodifiable([
-          for (final alias in aliases)
-            if (alias.trim().isNotEmpty) alias.trim(),
-        ]),
-        servings = List<Serving>.unmodifiable(_withGramServing(servings)),
-        variants = List<CookingVariant>.unmodifiable(variants) {
-    _requireUniqueIds(servings.map((serving) => serving.id), 'serving');
-    _requireUniqueIds(variants.map((variant) => variant.id), 'variant');
+  }) : id = _requireText(id, 'id'),
+       name = _requireText(name, 'name'),
+       aliases = List<String>.unmodifiable(
+         aliases
+             .map((String alias) => alias.trim())
+             .where((String alias) => alias.isNotEmpty),
+       ),
+       servings = List<Serving>.unmodifiable(_withGramServing(servings)),
+       variants = List<CookingVariant>.unmodifiable(variants) {
+    _requireUniqueIds(servings.map((Serving s) => s.id), 'serving');
+    _requireUniqueIds(variants.map((CookingVariant v) => v.id), 'variant');
     if (status == DataStatus.verified && source == null) {
       throw ArgumentError.value(
         source,
@@ -141,12 +143,11 @@ final class Food {
   bool get isSample => status == DataStatus.sample;
 
   /// Lower-case, single-spaced name and aliases, for search.
-  List<String> get searchTerms => [
-        for (final term in [name, ...aliases]) _normalise(term),
-      ];
+  List<String> get searchTerms =>
+      <String>[name, ...aliases].map(_normalise).toList(growable: false);
 
   Serving? servingById(String id) {
-    for (final serving in servings) {
+    for (final Serving serving in servings) {
       if (serving.id == id) {
         return serving;
       }
@@ -155,7 +156,7 @@ final class Food {
   }
 
   CookingVariant? variantById(String id) {
-    for (final variant in variants) {
+    for (final CookingVariant variant in variants) {
       if (variant.id == id) {
         return variant;
       }
@@ -165,38 +166,39 @@ final class Food {
 }
 
 List<Serving> _withGramServing(List<Serving> servings) {
-  for (final serving in servings) {
+  for (final Serving serving in servings) {
     if (serving.id == Serving.gramId) {
       throw ArgumentError(
         'The 1 g serving is built in and must not be redefined.',
       );
     }
   }
-  return [Serving.gram(), ...servings];
+  return <Serving>[Serving.gram(), ...servings];
 }
 
 Map<NutrientKind, int> _toPermille(Map<NutrientKind, num> factors) {
-  final result = <NutrientKind, int>{};
-  for (final entry in factors.entries) {
-    final factor = entry.value;
+  final Map<NutrientKind, int> result = <NutrientKind, int>{};
+  for (final MapEntry<NutrientKind, num> entry in factors.entries) {
+    final NutrientKind kind = entry.key;
+    final num factor = entry.value;
     if (!factor.isFinite || factor < 0 || factor > CookingVariant.maxFactor) {
       throw ArgumentError.value(
         factor,
-        'factors[${entry.key.name}]',
+        'factors.${kind.name}',
         'must be between 0 and ${CookingVariant.maxFactor}',
       );
     }
-    final permille = (factor * 1000).round();
+    final int permille = (factor * 1000).round();
     if (permille != 1000) {
-      result[entry.key] = permille;
+      result[kind] = permille;
     }
   }
   return result;
 }
 
 void _requireUniqueIds(Iterable<String> ids, String what) {
-  final seen = <String>{};
-  for (final id in ids) {
+  final Set<String> seen = <String>{};
+  for (final String id in ids) {
     if (!seen.add(id)) {
       throw ArgumentError('Duplicate $what id: $id');
     }
@@ -204,7 +206,7 @@ void _requireUniqueIds(Iterable<String> ids, String what) {
 }
 
 String _requireText(String value, String name) {
-  final trimmed = value.trim();
+  final String trimmed = value.trim();
   if (trimmed.isEmpty) {
     throw ArgumentError.value(value, name, 'must not be empty');
   }
