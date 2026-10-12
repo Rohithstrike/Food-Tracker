@@ -7,20 +7,44 @@
 // An UNKNOWN nutrient has no entry at all. A known zero is stored as 0.
 // The two are never treated as the same thing.
 
-/// The nutrients the app tracks. Each has one fixed unit.
-enum NutrientKind {
-  energy('Energy', 'kcal'),
-  protein('Protein', 'g'),
-  carbohydrates('Carbohydrates', 'g'),
-  fat('Fat', 'g'),
-  fibre('Fibre', 'g'),
-  sugar('Sugar', 'g'),
-  sodium('Sodium', 'mg');
+/// Broad nutrient groups, used for display ordering.
+enum NutrientGroup { energy, macronutrient, mineral, vitamin }
 
-  const NutrientKind(this.label, this.unit);
+/// The nutrients the app tracks. Each has one fixed unit.
+///
+/// PERSISTENCE CONTRACT: saved entries store nutrients by [Enum.name].
+/// Never rename or remove a value; only add new ones at the end.
+enum NutrientKind {
+  // Core seven (original set).
+  energy('Energy', 'kcal', NutrientGroup.energy),
+  protein('Protein', 'g', NutrientGroup.macronutrient),
+  carbohydrates('Carbohydrates', 'g', NutrientGroup.macronutrient),
+  fat('Fat', 'g', NutrientGroup.macronutrient),
+  fibre('Fibre', 'g', NutrientGroup.macronutrient),
+  sugar('Sugar', 'g', NutrientGroup.macronutrient),
+  sodium('Sodium', 'mg', NutrientGroup.mineral),
+
+  // Micronutrients. Shown only when a source provides them.
+  iron('Iron', 'mg', NutrientGroup.mineral),
+  calcium('Calcium', 'mg', NutrientGroup.mineral),
+  potassium('Potassium', 'mg', NutrientGroup.mineral),
+  magnesium('Magnesium', 'mg', NutrientGroup.mineral),
+  zinc('Zinc', 'mg', NutrientGroup.mineral),
+  vitaminA('Vitamin A', '\u00B5g', NutrientGroup.vitamin),
+  vitaminC('Vitamin C', 'mg', NutrientGroup.vitamin),
+  vitaminD('Vitamin D', '\u00B5g', NutrientGroup.vitamin),
+  vitaminB12('Vitamin B12', '\u00B5g', NutrientGroup.vitamin),
+  folate('Folate', '\u00B5g', NutrientGroup.vitamin);
+
+  const NutrientKind(this.label, this.unit, this.group);
 
   final String label;
   final String unit;
+  final NutrientGroup group;
+
+  /// The original seven nutrients every food must state explicitly
+  /// (as a value, or as explicitly unknown).
+  bool get isCore => index <= NutrientKind.sodium.index;
 }
 
 /// A non-negative nutrient amount, in thousandths of its unit.
@@ -84,10 +108,12 @@ final class NutrientProfile {
   NutrientProfile(Map<NutrientKind, NutrientAmount> known)
     : known = Map<NutrientKind, NutrientAmount>.unmodifiable(known);
 
-  /// Values per 100 g of the food as eaten.
+  /// Values per 100 g of the food, in the state the food declares
+  /// (raw, cooked or ready to eat).
   ///
-  /// Every nutrient must be given explicitly: a number when known, or null
+  /// The core seven must be given explicitly: a number when known, or null
   /// when unknown. This prevents a missing value from silently becoming 0.
+  /// Micronutrients are optional and are UNKNOWN unless supplied.
   factory NutrientProfile.per100g({
     required num? energyKcal,
     required num? proteinG,
@@ -96,8 +122,18 @@ final class NutrientProfile {
     required num? fibreG,
     required num? sugarG,
     required num? sodiumMg,
+    num? ironMg,
+    num? calciumMg,
+    num? potassiumMg,
+    num? magnesiumMg,
+    num? zincMg,
+    num? vitaminAUg,
+    num? vitaminCMg,
+    num? vitaminDUg,
+    num? vitaminB12Ug,
+    num? folateUg,
   }) {
-    final Map<NutrientKind, num?> values = {
+    return NutrientProfile.fromValues(<NutrientKind, num?>{
       NutrientKind.energy: energyKcal,
       NutrientKind.protein: proteinG,
       NutrientKind.carbohydrates: carbohydratesG,
@@ -105,8 +141,24 @@ final class NutrientProfile {
       NutrientKind.fibre: fibreG,
       NutrientKind.sugar: sugarG,
       NutrientKind.sodium: sodiumMg,
-    };
-    final Map<NutrientKind, NutrientAmount> known = {};
+      NutrientKind.iron: ironMg,
+      NutrientKind.calcium: calciumMg,
+      NutrientKind.potassium: potassiumMg,
+      NutrientKind.magnesium: magnesiumMg,
+      NutrientKind.zinc: zincMg,
+      NutrientKind.vitaminA: vitaminAUg,
+      NutrientKind.vitaminC: vitaminCMg,
+      NutrientKind.vitaminD: vitaminDUg,
+      NutrientKind.vitaminB12: vitaminB12Ug,
+      NutrientKind.folate: folateUg,
+    });
+  }
+
+  /// Builds a profile from whole-unit values (used by data providers).
+  /// Null values are UNKNOWN; they are never stored as zero.
+  factory NutrientProfile.fromValues(Map<NutrientKind, num?> values) {
+    final Map<NutrientKind, NutrientAmount> known =
+        <NutrientKind, NutrientAmount>{};
     for (final MapEntry<NutrientKind, num?> entry in values.entries) {
       final num? value = entry.value;
       if (value != null) {

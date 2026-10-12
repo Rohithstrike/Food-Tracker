@@ -1,9 +1,10 @@
 // Food records: identity, names, classification, nutrition per 100 g,
 // servings, cooking variants and provenance.
 //
-// Nutrition values are per 100 g of the food AS EATEN (edible portion,
-// as prepared). Data status is explicit, so sample or estimated values can
-// never be mistaken for verified data.
+// Nutrition values are per 100 g of the food in the state given by
+// [Food.state]: raw, cooked, or ready to eat as sold/served. Data status is
+// explicit, so sample or estimated values can never be mistaken for
+// verified data.
 
 import '../nutrition/nutrition.dart';
 import 'serving.dart';
@@ -44,12 +45,48 @@ enum DataStatus {
   userCustom,
 }
 
-/// Citation for verified data.
+/// What the per-100 g values describe.
+enum FoodState {
+  /// Uncooked weight (for example raw chicken breast).
+  raw,
+
+  /// Cooked weight (for example grilled chicken breast).
+  cooked,
+
+  /// Ready to eat as sold or served (for example a cooked dish or oil).
+  ready,
+}
+
+/// How a food record was prepared. A separate record per method is
+/// preferred over adjusting numbers, so values stay source-backed.
+enum PreparationMethod {
+  raw,
+  boiled,
+  steamed,
+  grilled,
+  roasted,
+  baked,
+  panFried,
+  deepFried,
+  curry,
+  other,
+}
+
+/// Citation for source-backed data.
 final class FoodSource {
-  const FoodSource({required this.citation, this.licenceNote});
+  const FoodSource({
+    required this.citation,
+    this.licenceNote,
+    this.recordId,
+    this.url,
+  });
 
   final String citation;
   final String? licenceNote;
+
+  /// The record's identifier in the original dataset (e.g. an FDC ID).
+  final String? recordId;
+  final String? url;
 }
 
 /// A way of preparing a food that changes its nutrition, for example
@@ -105,6 +142,10 @@ final class Food {
     List<CookingVariant> variants = const <CookingVariant>[],
     required this.status,
     this.source,
+    String? family,
+    String? variety,
+    this.preparation,
+    this.state = FoodState.ready,
   }) : id = _requireText(id, 'id'),
        name = _requireText(name, 'name'),
        aliases = List<String>.unmodifiable(
@@ -113,7 +154,9 @@ final class Food {
              .where((String alias) => alias.isNotEmpty),
        ),
        servings = List<Serving>.unmodifiable(_withGramServing(servings)),
-       variants = List<CookingVariant>.unmodifiable(variants) {
+       variants = List<CookingVariant>.unmodifiable(variants),
+       family = _optionalText(family),
+       variety = _optionalText(variety) {
     _requireUniqueIds(servings.map((Serving s) => s.id), 'serving');
     _requireUniqueIds(variants.map((CookingVariant v) => v.id), 'variant');
     if (status == DataStatus.verified && source == null) {
@@ -131,7 +174,7 @@ final class Food {
   final FoodCategory category;
   final FoodRegion region;
 
-  /// Nutrition per 100 g as eaten.
+  /// Nutrition per 100 g, in the state given by [state].
   final NutrientProfile per100g;
 
   /// Always starts with the built-in 1 g serving.
@@ -139,6 +182,18 @@ final class Food {
   final List<CookingVariant> variants;
   final DataStatus status;
   final FoodSource? source;
+
+  /// Groups varieties for search, e.g. "Chicken".
+  final String? family;
+
+  /// The specific variety within [family], e.g. "Breast, skinless".
+  final String? variety;
+
+  /// How this record was prepared, when known.
+  final PreparationMethod? preparation;
+
+  /// What the per-100 g values describe.
+  final FoodState state;
 
   bool get isSample => status == DataStatus.sample;
 
@@ -211,6 +266,14 @@ String _requireText(String value, String name) {
     throw ArgumentError.value(value, name, 'must not be empty');
   }
   return trimmed;
+}
+
+String? _optionalText(String? value) {
+  if (value == null) {
+    return null;
+  }
+  final String trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
 }
 
 String _normalise(String text) =>

@@ -219,9 +219,16 @@ void main() {
       expect(r.nutrients.isKnown(NutrientKind.fat), isTrue);
     });
 
+    // Updated in Batch 1: micronutrient kinds were added. They are unknown
+    // unless supplied, so the "exactly which kinds" check now applies to the
+    // core seven, and unsupplied micronutrients must also be unknown.
     test('profile reports exactly which kinds are unknown', () {
-      expect(sampleProfile().unknownKinds, {NutrientKind.sugar});
-      expect(sampleProfile(sugarG: 0).unknownKinds, isEmpty);
+      Set<NutrientKind> core(Set<NutrientKind> kinds) =>
+          kinds.where((NutrientKind k) => k.isCore).toSet();
+      expect(core(sampleProfile().unknownKinds), {NutrientKind.sugar});
+      expect(core(sampleProfile(sugarG: 0).unknownKinds), isEmpty);
+      expect(sampleProfile().unknownKinds, contains(NutrientKind.iron));
+      expect(sampleProfile().isKnown(NutrientKind.iron), isFalse);
     });
   });
 
