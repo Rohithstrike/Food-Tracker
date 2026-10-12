@@ -27,39 +27,41 @@ class PlaceholderPage extends StatelessWidget {
     return CupertinoPageScaffold(
       child: CustomScrollView(
         slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: Text(title),
-          ),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Padding(
-                padding: AppSpacing.pageHorizontal,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      icon,
-                      size: AppIconSize.emptyState,
-                      color: textSecondary,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Coming in a later milestone',
-                      style: AppTypography.headline.copyWith(
-                        color: textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.itemGapTight),
-                    Text(
-                      message,
-                      style: AppTypography.subheadline.copyWith(
+          CupertinoSliverNavigationBar(largeTitle: Text(title)),
+          // Keeps the message centred in the area above the floating bar.
+          SliverSafeArea(
+            top: false,
+            sliver: SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: AppSpacing.pageHorizontal,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        size: AppIconSize.emptyState,
                         color: textSecondary,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'Coming in a later milestone',
+                        style: AppTypography.headline.copyWith(
+                          color: textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.itemGapTight),
+                      Text(
+                        message,
+                        style: AppTypography.subheadline.copyWith(
+                          color: textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

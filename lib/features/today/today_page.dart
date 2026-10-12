@@ -57,7 +57,6 @@ class TodayPage extends StatelessWidget {
       child: CustomScrollView(
         slivers: [
           SliverSafeArea(
-            bottom: false,
             sliver: SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.pageMargin,
@@ -69,10 +68,7 @@ class TodayPage extends StatelessWidget {
                 children: [
                   GreetingHeader(clock: clock, onSettingsTap: onOpenSettings),
                   const SizedBox(height: AppSpacing.xl),
-                  CalorieHero(
-                    progress: data.calories,
-                    isSample: data.isSample,
-                  ),
+                  CalorieHero(progress: data.calories, isSample: data.isSample),
                   const SizedBox(height: AppSpacing.sectionGap),
                   const _SectionHeader('Nutrition'),
                   const SizedBox(height: AppSpacing.sm),

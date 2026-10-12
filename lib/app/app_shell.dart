@@ -1,18 +1,16 @@
 import 'package:flutter/cupertino.dart';
 
 import '../core/design_system/app_colors.dart';
+import '../core/design_system/app_spacing.dart';
 import '../features/today/today_page.dart';
+import 'floating_tab_bar.dart';
 import 'placeholder_page.dart';
 
 /// The app's top-level destinations, in tab-bar order.
 enum AppTab {
   today('Today', CupertinoIcons.sun_max, CupertinoIcons.sun_max_fill),
   search('Search', CupertinoIcons.search, CupertinoIcons.search),
-  progress(
-    'Progress',
-    CupertinoIcons.chart_bar,
-    CupertinoIcons.chart_bar_fill,
-  ),
+  progress('Progress', CupertinoIcons.chart_bar, CupertinoIcons.chart_bar_fill),
   settings('Settings', CupertinoIcons.gear, CupertinoIcons.gear_solid);
 
   const AppTab(this.label, this.icon, this.activeIcon);
@@ -22,13 +20,13 @@ enum AppTab {
   final IconData activeIcon;
 }
 
-/// Four-tab navigation shell.
+/// Four-tab navigation shell with a floating tab bar.
 ///
-/// Built from CupertinoTabBar + CupertinoTabView + IndexedStack rather than
-/// CupertinoTabScaffold, so a later milestone can float a translucent tab
-/// bar over scrolling content by changing only this file.
+/// Pages fill the whole screen and scroll BEHIND the bar. The space the bar
+/// occupies is passed to pages as bottom safe-area padding, so their last
+/// content always clears it.
 ///
-/// Behaviour:
+/// Behaviour (unchanged from Batch 1):
 /// - Each tab keeps its own navigation stack and scroll position.
 /// - Tapping the active tab returns that tab to its root page (iOS convention).
 /// - Hidden tabs have animations paused.
@@ -56,39 +54,41 @@ class _AppShellState extends State<AppShell> {
 
   Widget _rootPage(AppTab tab) {
     return switch (tab) {
-      AppTab.today => TodayPage(
-          onOpenSettings: () => _select(AppTab.settings),
-        ),
+      AppTab.today => TodayPage(onOpenSettings: () => _select(AppTab.settings)),
       AppTab.search => const PlaceholderPage(
-          title: 'Search',
-          icon: CupertinoIcons.search,
-          message: 'Food search arrives in a later milestone.',
-        ),
+        title: 'Search',
+        icon: CupertinoIcons.search,
+        message: 'Food search arrives in a later milestone.',
+      ),
       AppTab.progress => const PlaceholderPage(
-          title: 'Progress',
-          icon: CupertinoIcons.chart_bar,
-          message: 'Progress tracking arrives in a later milestone.',
-        ),
+        title: 'Progress',
+        icon: CupertinoIcons.chart_bar,
+        message: 'Progress tracking arrives in a later milestone.',
+      ),
       AppTab.settings => const PlaceholderPage(
-          title: 'Settings',
-          icon: CupertinoIcons.gear,
-          message: 'Settings arrive in a later milestone.',
-        ),
+        title: 'Settings',
+        icon: CupertinoIcons.gear,
+        message: 'Settings arrive in a later milestone.',
+      ),
     };
   }
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final safeBottom = media.padding.bottom;
+    final occupied = FloatingTabBarMetrics.occupiedHeight(safeBottom);
+
     return ColoredBox(
       color: AppColors.background.resolveFrom(context),
-      child: Column(
+      child: Stack(
         children: [
-          Expanded(
-            // The tab bar handles the bottom safe area itself, so page
-            // content must not add it again.
-            child: MediaQuery.removePadding(
-              context: context,
-              removeBottom: true,
+          Positioned.fill(
+            child: MediaQuery(
+              data: media.copyWith(
+                padding: media.padding.copyWith(bottom: occupied),
+                viewPadding: media.viewPadding.copyWith(bottom: occupied),
+              ),
               child: IndexedStack(
                 index: _current.index,
                 children: [
@@ -104,29 +104,28 @@ class _AppShellState extends State<AppShell> {
               ),
             ),
           ),
-          // iOS does not scale tab-bar labels with Dynamic Type; page
-          // content still scales fully.
-          MediaQuery.withNoTextScaling(
-            child: CupertinoTabBar(
-              currentIndex: _current.index,
-              onTap: (index) => _select(AppTab.values[index]),
-              backgroundColor: AppColors.surface.resolveFrom(context),
-              activeColor: AppColors.accent.resolveFrom(context),
-              inactiveColor: AppColors.textSecondary.resolveFrom(context),
-              border: Border(
-                top: BorderSide(
-                  color: AppColors.separator.resolveFrom(context),
-                  width: 0, // Hairline.
+          Positioned(
+            left: AppSpacing.pageMargin,
+            right: AppSpacing.pageMargin,
+            bottom: FloatingTabBarMetrics.bottomOffset(safeBottom),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: FloatingTabBarMetrics.maxWidth,
+                ),
+                child: FloatingTabBar(
+                  currentIndex: _current.index,
+                  onTap: (index) => _select(AppTab.values[index]),
+                  items: [
+                    for (final tab in AppTab.values)
+                      FloatingTabItem(
+                        label: tab.label,
+                        icon: tab.icon,
+                        activeIcon: tab.activeIcon,
+                      ),
+                  ],
                 ),
               ),
-              items: [
-                for (final tab in AppTab.values)
-                  BottomNavigationBarItem(
-                    icon: Icon(tab.icon),
-                    activeIcon: Icon(tab.activeIcon),
-                    label: tab.label,
-                  ),
-              ],
             ),
           ),
         ],
