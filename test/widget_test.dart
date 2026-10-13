@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:indian_food_tracker/app/floating_tab_bar.dart';
 import 'package:indian_food_tracker/core/design_system/app_colors.dart';
+import 'package:indian_food_tracker/features/search/food_labels.dart';
 import 'package:indian_food_tracker/main.dart';
 
 const todaySubtitle = "Let's make today count.";
@@ -16,8 +17,9 @@ Finder tabItem(String label) => find.descendant(
 int currentTabIndex(WidgetTester tester) =>
     tester.widget<FloatingTabBar>(find.byType(FloatingTabBar)).currentIndex;
 
-const placeholderMessages = <String, String>{
-  'Search': 'Food search arrives in a later milestone.',
+/// Text that identifies each non-Today tab's page.
+const tabPageTexts = <String, String>{
+  'Search': searchHint,
   'Progress': 'Progress tracking arrives in a later milestone.',
   'Settings': 'Settings arrive in a later milestone.',
 };
@@ -47,7 +49,7 @@ void main() {
     await tester.pumpWidget(const IndianFoodTrackerApp());
 
     var expectedIndex = 1;
-    for (final entry in placeholderMessages.entries) {
+    for (final entry in tabPageTexts.entries) {
       await tester.tap(tabItem(entry.key));
       await tester.pumpAndSettle();
 
@@ -73,7 +75,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(currentTabIndex(tester), 3);
-    expect(find.text(placeholderMessages['Settings']!), findsOneWidget);
+    expect(find.text('Settings arrive in a later milestone.'), findsOneWidget);
   });
 
   testWidgets('Tab bar uses design-system colours in dark mode', (

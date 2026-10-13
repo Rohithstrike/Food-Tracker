@@ -2,6 +2,10 @@ import 'package:flutter/cupertino.dart';
 
 import '../core/design_system/app_colors.dart';
 import '../core/design_system/app_spacing.dart';
+import '../data/food/food_provider.dart';
+import '../data/food/food_repository.dart';
+import '../data/food/sample_food_provider.dart';
+import '../features/search/food_search_page.dart';
 import '../features/today/today_page.dart';
 import 'floating_tab_bar.dart';
 import 'placeholder_page.dart';
@@ -26,7 +30,7 @@ enum AppTab {
 /// occupies is passed to pages as bottom safe-area padding, so their last
 /// content always clears it.
 ///
-/// Behaviour (unchanged from Batch 1):
+/// Behaviour:
 /// - Each tab keeps its own navigation stack and scroll position.
 /// - Tapping the active tab returns that tab to its root page (iOS convention).
 /// - Hidden tabs have animations paused.
@@ -39,6 +43,12 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   AppTab _current = AppTab.today;
+
+  /// The single source of food data for the app. Currently sample data
+  /// only; licensed datasets are added as further providers.
+  final FoodRepository _foods = FoodRepository(const <FoodProvider>[
+    SampleFoodProvider(),
+  ]);
 
   final Map<AppTab, GlobalKey<NavigatorState>> _navigatorKeys = {
     for (final tab in AppTab.values) tab: GlobalKey<NavigatorState>(),
@@ -55,11 +65,7 @@ class _AppShellState extends State<AppShell> {
   Widget _rootPage(AppTab tab) {
     return switch (tab) {
       AppTab.today => TodayPage(onOpenSettings: () => _select(AppTab.settings)),
-      AppTab.search => const PlaceholderPage(
-        title: 'Search',
-        icon: CupertinoIcons.search,
-        message: 'Food search arrives in a later milestone.',
-      ),
+      AppTab.search => FoodSearchPage(repository: _foods),
       AppTab.progress => const PlaceholderPage(
         title: 'Progress',
         icon: CupertinoIcons.chart_bar,
