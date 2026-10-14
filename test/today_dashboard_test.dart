@@ -10,18 +10,19 @@ DateTime Function() fixedClock(int hour, [int minute = 0]) =>
     () => DateTime(2026, 1, 1, hour, minute);
 
 /// Pumps the Today page alone in a tall phone-width view, so every
-/// section is built without scrolling.
+/// section is built without scrolling. Uses the clearly labelled sample
+/// summary unless [summary] is given.
 Future<void> pumpToday(
   WidgetTester tester, {
   DailySummary? summary,
   DateTime Function()? clock,
   double? textScale,
   bool reduceMotion = false,
+  ValueChanged<MealSlot>? onAddFood,
 }) async {
   tester.view.physicalSize = const Size(390, 2600);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
-
   if (textScale != null) {
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -31,11 +32,14 @@ Future<void> pumpToday(
         const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
   }
-
   await tester.pumpWidget(
     CupertinoApp(
       theme: AppTheme.build(),
-      home: TodayPage(summary: summary, clock: clock ?? fixedClock(9)),
+      home: TodayPage(
+        summary: summary ?? DailySummary.sample(),
+        clock: clock ?? fixedClock(9),
+        onAddFood: onAddFood,
+      ),
     ),
   );
 }
@@ -256,21 +260,18 @@ void main() {
     testWidgets('empty and sample statuses', (tester) async {
       await pumpToday(tester);
       expect(find.text('Nothing added yet'), findsNWidgets(3));
-      expect(find.text('2 items · 380 kcal'), findsOneWidget);
-      expect(find.text('1 item · 120 kcal'), findsOneWidget);
+      expect(find.text('2 items \u00B7 380 kcal'), findsOneWidget);
+      expect(find.text('1 item \u00B7 120 kcal'), findsOneWidget);
     });
 
     testWidgets('each + opens the flow for its own meal', (tester) async {
-      await pumpToday(tester);
+      final tapped = <String>[];
+      await pumpToday(tester, onAddFood: (slot) => tapped.add(slot.id));
       for (final slot in defaultMealSlots) {
         await tester.tap(find.byKey(ValueKey('add-meal-${slot.id}')));
-        await tester.pumpAndSettle();
-        expect(find.text('Add to ${slot.name}'), findsOneWidget);
-
-        await tester.tap(find.text('OK'));
-        await tester.pumpAndSettle();
-        expect(find.text('Add to ${slot.name}'), findsNothing);
+        await tester.pump();
       }
+      expect(tapped, defaultMealSlots.map((s) => s.id).toList());
     });
 
     testWidgets('+ buttons meet the 44 x 44 touch target', (tester) async {

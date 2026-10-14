@@ -1,7 +1,14 @@
-// Search tab: instant, offline food search over the FoodRepository.
+// Search: instant, offline food search over the FoodRepository.
 //
 // Results show each food's state, energy per 100 g and a "Sample" label for
-// development data. Tapping a result opens the food detail sheet.
+// development data. Tapping a result opens the food detail sheet, where the
+// food can be added to a meal.
+//
+// Opened from the Search tab, the meal defaults to the one that fits the
+// current local time. Opened from a meal's + button on Today, that meal is
+// pre-selected and the page closes after the food is added.
+
+import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 
@@ -10,13 +17,40 @@ import '../../core/design_system/app_spacing.dart';
 import '../../core/design_system/app_typography.dart';
 import '../../data/food/food_repository.dart';
 import '../../domain/food/food.dart';
+import '../../domain/log/log_entry.dart';
+import '../log/day_log_controller.dart';
+import '../log/default_meal.dart';
+import '../today/today_models.dart';
 import 'food_detail_sheet.dart';
 import 'food_labels.dart';
 
 class FoodSearchPage extends StatefulWidget {
-  const FoodSearchPage({super.key, required this.repository});
+  const FoodSearchPage({
+    super.key,
+    required this.repository,
+    required this.controller,
+    this.mealSlots = defaultMealSlots,
+    this.initialMealSlotId,
+    this.popOnAdd = false,
+    this.clock,
+    this.onAdded,
+  });
 
   final FoodRepository repository;
+  final DayLogController controller;
+  final List<MealSlot> mealSlots;
+
+  /// The meal to pre-select. Null means "choose by the current time".
+  final String? initialMealSlotId;
+
+  /// Close this page after food is added (used when opened from Today).
+  final bool popOnAdd;
+
+  /// Injectable for tests. Defaults to the device's local time.
+  final DateTime Function()? clock;
+
+  /// Called after an entry has been added.
+  final ValueChanged<LogEntry>? onAdded;
 
   @override
   State<FoodSearchPage> createState() => _FoodSearchPageState();
@@ -33,14 +67,32 @@ class _FoodSearchPageState extends State<FoodSearchPage> {
     super.dispose();
   }
 
-  void _open(Food food) {
-    showFoodDetailSheet(
+  Future<void> _open(Food food) async {
+    final List<MealSlot> visible = visibleMealSlots(widget.mealSlots);
+    final List<MealSlot> slots = visible.isEmpty
+        ? visibleMealSlots(defaultMealSlots)
+        : visible;
+    final String mealSlotId =
+        widget.initialMealSlotId ??
+        defaultMealSlotFor(slots, (widget.clock ?? DateTime.now)()).id;
+
+    final LogEntry? added = await showFoodDetailSheet(
       context,
       food: food,
       oilFood: food.id == defaultOilFoodId
           ? null
           : widget.repository.foodById(defaultOilFoodId),
+      controller: widget.controller,
+      mealSlots: slots,
+      initialMealSlotId: mealSlotId,
     );
+    if (added == null || !mounted) {
+      return;
+    }
+    widget.onAdded?.call(added);
+    if (widget.popOnAdd) {
+      Navigator.of(context).pop();
+    }
   }
 
   Widget _body(AsyncSnapshot<void> snapshot) {
@@ -75,7 +127,7 @@ class _FoodSearchPageState extends State<FoodSearchPage> {
     }
     return _ResultList(
       foods: <Food>[for (final FoodSearchResult r in results) r.food],
-      onTap: _open,
+      onTap: (Food food) => unawaited(_open(food)),
     );
   }
 
@@ -88,7 +140,9 @@ class _FoodSearchPageState extends State<FoodSearchPage> {
           return CustomScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: <Widget>[
-              const CupertinoSliverNavigationBar(largeTitle: Text('Search')),
+              CupertinoSliverNavigationBar(
+                largeTitle: Text(widget.popOnAdd ? 'Add food' : 'Search'),
+              ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(

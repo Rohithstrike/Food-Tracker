@@ -5,6 +5,8 @@ import 'package:indian_food_tracker/core/design_system/app_theme.dart';
 import 'package:indian_food_tracker/data/food/food_provider.dart';
 import 'package:indian_food_tracker/data/food/food_repository.dart';
 import 'package:indian_food_tracker/data/food/sample_food_provider.dart';
+import 'package:indian_food_tracker/data/log/log_store.dart';
+import 'package:indian_food_tracker/features/log/day_log_controller.dart';
 import 'package:indian_food_tracker/features/search/food_labels.dart';
 import 'package:indian_food_tracker/features/search/food_search_page.dart';
 
@@ -28,10 +30,19 @@ Future<void> pumpSearch(
   final FoodRepository repository = FoodRepository(const <FoodProvider>[
     SampleFoodProvider(),
   ]);
+  DateTime clock() => DateTime(2026, 10, 12, 13);
+  final DayLogController controller = DayLogController(
+    store: InMemoryLogStore(),
+    clock: clock,
+  );
   await tester.pumpWidget(
     CupertinoApp(
       theme: AppTheme.build(),
-      home: FoodSearchPage(repository: repository),
+      home: FoodSearchPage(
+        repository: repository,
+        controller: controller,
+        clock: clock,
+      ),
     ),
   );
   await tester.pumpAndSettle();

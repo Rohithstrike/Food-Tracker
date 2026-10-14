@@ -1,10 +1,9 @@
-// Food detail sheet: choose serving, quantity and added oil, and see the
-// nutrition update live.
+// Food detail sheet: choose the meal, serving, quantity and added oil, see
+// the nutrition update live, and add the food to a meal.
 //
 // Every number comes from EntryBuilder, which uses the existing
 // NutritionEngine. Unknown nutrients are shown as "Not available", never as
-// zero. Adding to a meal arrives in the next batch, so this sheet has no
-// "Add" button yet.
+// zero. Adding goes through DayLogController, which builds the same entry.
 
 import 'package:flutter/cupertino.dart';
 
@@ -17,18 +16,30 @@ import '../../domain/log/entry_builder.dart';
 import '../../domain/log/log_entry.dart';
 import '../../domain/nutrition/nutrition.dart';
 import '../../domain/nutrition/nutrition_engine.dart';
+import '../log/day_log_controller.dart';
+import '../log/default_meal.dart';
+import '../today/today_models.dart';
 import 'food_controls.dart';
 import 'food_labels.dart';
 
 /// Opens the detail sheet for [food] above the tab bar.
-Future<void> showFoodDetailSheet(
+/// Completes with the added entry, or null if nothing was added.
+Future<LogEntry?> showFoodDetailSheet(
   BuildContext context, {
   required Food food,
   Food? oilFood,
-}) => showCupertinoModalPopup<void>(
+  required DayLogController controller,
+  required List<MealSlot> mealSlots,
+  required String initialMealSlotId,
+}) => showCupertinoModalPopup<LogEntry>(
   context: context,
-  builder: (BuildContext context) =>
-      FoodDetailSheet(food: food, oilFood: oilFood),
+  builder: (BuildContext context) => FoodDetailSheet(
+    food: food,
+    oilFood: oilFood,
+    controller: controller,
+    mealSlots: mealSlots,
+    initialMealSlotId: initialMealSlotId,
+  ),
 );
 
 /// Shown first, in this order. Other nutrients appear only when known.
@@ -41,13 +52,31 @@ const List<NutrientKind> _mainNutrients = <NutrientKind>[
   NutrientKind.sodium,
 ];
 
+const String _addFailedMessage =
+    'This food could not be added. Please try again.';
+
 class FoodDetailSheet extends StatefulWidget {
-  const FoodDetailSheet({super.key, required this.food, this.oilFood});
+  const FoodDetailSheet({
+    super.key,
+    required this.food,
+    this.oilFood,
+    required this.controller,
+    required this.mealSlots,
+    required this.initialMealSlotId,
+  });
 
   final Food food;
 
   /// The oil used for "Added oil". Null hides the oil controls.
   final Food? oilFood;
+
+  final DayLogController controller;
+
+  /// Meals the user can choose from, in display order.
+  final List<MealSlot> mealSlots;
+
+  /// The meal selected when the sheet opens.
+  final String initialMealSlotId;
 
   @override
   State<FoodDetailSheet> createState() => _FoodDetailSheetState();
@@ -57,8 +86,14 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
   late String _servingId = defaultServingId(widget.food);
   late num _quantity = defaultQuantityFor(_servingId);
   num _oilGrams = 0;
+  late String _mealSlotId = widget.initialMealSlotId;
+  bool _adding = false;
+  String? _error;
 
   Serving get _serving => widget.food.servingById(_servingId)!;
+
+  String get _mealName =>
+      mealSlotById(widget.mealSlots, _mealSlotId)?.name ?? 'meal';
 
   void _selectServing(String id) {
     if (id == _servingId) {
@@ -119,6 +154,41 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
     }
   }
 
+  Future<void> _add() async {
+    if (_adding) {
+      return;
+    }
+    final Food? oil = widget.oilFood;
+    setState(() {
+      _adding = true;
+      _error = null;
+    });
+    try {
+      final LogEntry entry = await widget.controller.add(
+        mealSlotId: _mealSlotId,
+        base: FoodPortion(
+          food: widget.food,
+          servingId: _servingId,
+          quantity: _quantity,
+        ),
+        oil: oil,
+        oilGrams: oil == null ? 0 : _oilGrams,
+      );
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(entry);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _adding = false;
+        _error = _addFailedMessage;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Food food = widget.food;
@@ -148,6 +218,27 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
         Text(sampleDataNotice, style: note),
       ],
       const SizedBox(height: AppSpacing.xl),
+      if (widget.mealSlots.isNotEmpty) ...<Widget>[
+        const SectionLabel('Meal'),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: <Widget>[
+            for (final MealSlot slot in widget.mealSlots)
+              SelectableChip(
+                key: ValueKey<String>('meal-${slot.id}'),
+                label: slot.name,
+                selected: slot.id == _mealSlotId,
+                onTap: () => setState(() {
+                  _mealSlotId = slot.id;
+                  _error = null;
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
       if (food.servings.length > 1) ...<Widget>[
         const SectionLabel('Serving'),
         const SizedBox(height: AppSpacing.xs),
@@ -227,12 +318,6 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
             child: Text('\u2022 $assumption', style: note),
           ),
       ],
-      const SizedBox(height: AppSpacing.lg),
-      Text(
-        'Adding food to a meal arrives in the next update.',
-        textAlign: TextAlign.center,
-        style: note,
-      ),
     ];
 
     return ConstrainedBox(
@@ -260,7 +345,7 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
                       AppSpacing.pageMargin,
                       0,
                       AppSpacing.pageMargin,
-                      AppSpacing.xl,
+                      AppSpacing.lg,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,11 +353,74 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
                     ),
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.pageMargin,
+                    AppSpacing.sm,
+                    AppSpacing.pageMargin,
+                    AppSpacing.md,
+                  ),
+                  child: _AddBar(
+                    label: 'Add to $_mealName',
+                    error: _error,
+                    onPressed: entry == null || _adding ? null : _add,
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AddBar extends StatelessWidget {
+  const _AddBar({required this.label, required this.onPressed, this.error});
+
+  final String label;
+  final VoidCallback? onPressed;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? message = error;
+    final bool enabled = onPressed != null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (message != null) ...<Widget>[
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTypography.footnote.copyWith(
+              color: AppColors.error.resolveFrom(context),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+        ],
+        CupertinoButton(
+          key: const ValueKey<String>('detail-add'),
+          color: AppColors.accent.resolveFrom(context),
+          disabledColor: AppColors.surfaceSecondary.resolveFrom(context),
+          borderRadius: AppRadius.mediumAll,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          onPressed: onPressed,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppTypography.headline.copyWith(
+              color: enabled
+                  ? AppColors.onAccent.resolveFrom(context)
+                  : AppColors.textTertiary.resolveFrom(context),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

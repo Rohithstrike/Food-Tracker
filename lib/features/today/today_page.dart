@@ -9,53 +9,59 @@ import 'meal_section_list.dart';
 import 'nutrient_progress_grid.dart';
 import 'today_models.dart';
 
+/// Shown while Today uses the built-in default targets.
+const String defaultTargetsNote =
+    'Default targets. Personal targets arrive with your profile in Settings.';
+
+/// Shown on a day with nothing logged.
+const String emptyDayMessage =
+    'Nothing logged today yet. Tap + on a meal to add food.';
+
+/// Shown when a logged food has no value for a nutrient shown on Today.
+const String incompleteDataNote =
+    'Some logged foods have no value for a nutrient. Totals include known '
+    'values only.';
+
 /// Today dashboard.
 ///
-/// Displays [summary] (currently clearly labelled SAMPLE data). When food
-/// logging is implemented, a real summary built from saved entries is passed
-/// in and this screen does not change.
+/// Displays [summary], built from the day's logged entries. This screen never
+/// substitutes sample data: a day with nothing logged is shown as empty.
 class TodayPage extends StatelessWidget {
   const TodayPage({
     super.key,
-    this.summary,
+    required this.summary,
     this.mealSlots = defaultMealSlots,
     this.clock,
     this.onOpenSettings,
+    this.onAddFood,
+    this.hasIncompleteData = false,
+    this.showDefaultTargetsNote = false,
   });
 
-  final DailySummary? summary;
+  final DailySummary summary;
   final List<MealSlot> mealSlots;
   final DateTime Function()? clock;
   final VoidCallback? onOpenSettings;
 
-  void _showAddFood(BuildContext context, MealSlot slot) {
-    showCupertinoDialog<void>(
-      context: context,
-      builder: (dialogContext) => CupertinoAlertDialog(
-        title: Text('Add to ${slot.name}'),
-        content: const Text(
-          'Food search and logging arrive in a later milestone. '
-          'This meal will be pre-selected.',
-        ),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
+  /// Called with the meal whose + button was tapped.
+  final ValueChanged<MealSlot>? onAddFood;
+
+  /// True when a logged food is missing a value for a nutrient shown here.
+  final bool hasIncompleteData;
+
+  /// True while the targets are defaults rather than personal targets.
+  final bool showDefaultTargetsNote;
 
   @override
   Widget build(BuildContext context) {
-    final data = summary ?? DailySummary.sample();
-    final slots = visibleMealSlots(mealSlots);
+    final List<MealSlot> slots = visibleMealSlots(mealSlots);
+    final bool isEmptyDay = summary.meals.values.every(
+      (MealSummary meal) => meal.isEmpty,
+    );
 
     return CupertinoPageScaffold(
       child: CustomScrollView(
-        slivers: [
+        slivers: <Widget>[
           SliverSafeArea(
             sliver: SliverPadding(
               padding: const EdgeInsets.fromLTRB(
@@ -65,21 +71,47 @@ class TodayPage extends StatelessWidget {
                 AppSpacing.xxl,
               ),
               sliver: SliverList.list(
-                children: [
+                children: <Widget>[
                   GreetingHeader(clock: clock, onSettingsTap: onOpenSettings),
                   const SizedBox(height: AppSpacing.xl),
-                  CalorieHero(progress: data.calories, isSample: data.isSample),
+                  CalorieHero(
+                    progress: summary.calories,
+                    isSample: summary.isSample,
+                  ),
+                  if (showDefaultTargetsNote) ...<Widget>[
+                    const SizedBox(height: AppSpacing.sm),
+                    const _Note(
+                      defaultTargetsNote,
+                      key: ValueKey<String>('today-default-targets'),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  if (hasIncompleteData) ...<Widget>[
+                    const SizedBox(height: AppSpacing.xs),
+                    const _Note(
+                      incompleteDataNote,
+                      key: ValueKey<String>('today-incomplete-data'),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.sectionGap),
                   const _SectionHeader('Nutrition'),
                   const SizedBox(height: AppSpacing.sm),
-                  NutrientProgressGrid(nutrients: data.nutrients),
+                  NutrientProgressGrid(nutrients: summary.nutrients),
                   const SizedBox(height: AppSpacing.sectionGap),
                   const _SectionHeader("Today's meals"),
+                  if (isEmptyDay) ...<Widget>[
+                    const SizedBox(height: AppSpacing.xs),
+                    const _Note(
+                      emptyDayMessage,
+                      key: ValueKey<String>('today-empty-day'),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.sm),
                   MealSectionList(
                     slots: slots,
-                    summaryFor: data.mealFor,
-                    onAdd: (slot) => _showAddFood(context, slot),
+                    summaryFor: summary.mealFor,
+                    onAdd: (MealSlot slot) => onAddFood?.call(slot),
                   ),
                 ],
               ),
@@ -105,6 +137,24 @@ class _SectionHeader extends StatelessWidget {
         style: AppTypography.title.copyWith(
           color: AppColors.textPrimary.resolveFrom(context),
         ),
+      ),
+    );
+  }
+}
+
+class _Note extends StatelessWidget {
+  const _Note(this.text, {super.key, this.textAlign = TextAlign.start});
+
+  final String text;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      textAlign: textAlign,
+      style: AppTypography.footnote.copyWith(
+        color: AppColors.textSecondary.resolveFrom(context),
       ),
     );
   }
