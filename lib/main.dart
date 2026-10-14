@@ -8,7 +8,7 @@ void main() {
 }
 
 /// Root of the application.
-/// The theme follows the system light/dark appearance.
+/// The theme is always dark, whatever the system appearance.
 class IndianFoodTrackerApp extends StatelessWidget {
   const IndianFoodTrackerApp({super.key});
 

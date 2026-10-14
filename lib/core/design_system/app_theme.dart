@@ -5,9 +5,10 @@ import 'app_typography.dart';
 
 /// Builds the app-wide Cupertino theme from the design-system tokens.
 abstract final class AppTheme {
-  /// [brightness] null  → follow the system appearance (current behaviour).
-  /// [brightness] value → force light or dark (future Settings option).
-  static CupertinoThemeData build({Brightness? brightness}) {
+  /// The app is dark only. [brightness] defaults to dark so the theme never
+  /// follows a light system appearance. The parameter is kept so existing
+  /// callers and tests continue to compile.
+  static CupertinoThemeData build({Brightness brightness = Brightness.dark}) {
     return CupertinoThemeData(
       brightness: brightness,
       primaryColor: AppColors.accent,

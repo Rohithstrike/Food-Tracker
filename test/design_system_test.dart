@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:indian_food_tracker/core/design_system/app_colors.dart';
+import 'package:indian_food_tracker/core/design_system/app_motion.dart';
 import 'package:indian_food_tracker/core/design_system/app_theme.dart';
 import 'package:indian_food_tracker/main.dart';
 
@@ -24,7 +25,35 @@ typedef ContrastPair = (
 );
 
 const double normalText = 4.5; // WCAG AA, normal-size text
-const double largeOrHint = 3.0; // WCAG AA, large text / placeholders
+const double nonText = 3.0; // WCAG AA, essential non-text indicators
+
+/// Project floor for disabled labels. WCAG exempts disabled controls; this
+/// only keeps them from disappearing entirely.
+const double disabledFloor = 2.0;
+
+/// Every token, so the dark-only rule can be checked for all of them.
+const List<(String, CupertinoDynamicColor)> allTokens = [
+  ('background', AppColors.background),
+  ('surface', AppColors.surface),
+  ('surfaceElevated', AppColors.surfaceElevated),
+  ('surfaceSecondary', AppColors.surfaceSecondary),
+  ('separator', AppColors.separator),
+  ('track', AppColors.track),
+  ('strokeStrong', AppColors.strokeStrong),
+  ('textPrimary', AppColors.textPrimary),
+  ('textSecondary', AppColors.textSecondary),
+  ('textTertiary', AppColors.textTertiary),
+  ('textDisabled', AppColors.textDisabled),
+  ('accent', AppColors.accent),
+  ('onAccent', AppColors.onAccent),
+  ('success', AppColors.success),
+  ('warning', AppColors.warning),
+  ('error', AppColors.error),
+  ('protein', AppColors.protein),
+  ('carbs', AppColors.carbs),
+  ('fat', AppColors.fat),
+  ('fibre', AppColors.fibre),
+];
 
 List<ContrastPair> intendedPairs() {
   const textSurfaces = <(String, CupertinoDynamicColor)>[
@@ -39,7 +68,7 @@ List<ContrastPair> intendedPairs() {
 
   final pairs = <ContrastPair>[];
 
-  // Primary/secondary text and accent: allowed on every surface.
+  // Text, accent and essential outlines: allowed on every surface.
   for (final (surfaceName, surface) in allSurfaces) {
     pairs
       ..add((
@@ -54,12 +83,24 @@ List<ContrastPair> intendedPairs() {
         surface,
         normalText,
       ))
-      ..add(('accent on $surfaceName', AppColors.accent, surface, normalText))
       ..add((
         'textTertiary on $surfaceName',
         AppColors.textTertiary,
         surface,
-        largeOrHint,
+        normalText,
+      ))
+      ..add(('accent on $surfaceName', AppColors.accent, surface, normalText))
+      ..add((
+        'strokeStrong on $surfaceName',
+        AppColors.strokeStrong,
+        surface,
+        nonText,
+      ))
+      ..add((
+        'textDisabled on $surfaceName',
+        AppColors.textDisabled,
+        surface,
+        disabledFloor,
       ));
   }
 
@@ -80,7 +121,19 @@ List<ContrastPair> intendedPairs() {
     }
   }
 
-  // Label on a filled accent button.
+  // Filled part of the calorie ring and macro bars against their track.
+  const indicators = <(String, CupertinoDynamicColor)>[
+    ('accent', AppColors.accent),
+    ('protein', AppColors.protein),
+    ('carbs', AppColors.carbs),
+    ('fat', AppColors.fat),
+    ('fibre', AppColors.fibre),
+  ];
+  for (final (name, colour) in indicators) {
+    pairs.add(('$name on track', colour, AppColors.track, nonText));
+  }
+
+  // Label on the filled accent (primary Add) button.
   pairs.add((
     'onAccent on accent',
     AppColors.onAccent,
@@ -88,15 +141,21 @@ List<ContrastPair> intendedPairs() {
     normalText,
   ));
 
+  // Selected chip: off-white fill with dark text.
+  pairs.add((
+    'background on textPrimary (selected chip)',
+    AppColors.background,
+    AppColors.textPrimary,
+    normalText,
+  ));
+
   return pairs;
 }
 
-List<String> contrastFailures({required bool dark}) {
+List<String> contrastFailures() {
   final failures = <String>[];
   for (final (name, fg, bg, minimum) in intendedPairs()) {
-    final ratio = dark
-        ? contrastRatio(fg.darkColor, bg.darkColor)
-        : contrastRatio(fg.color, bg.color);
+    final ratio = contrastRatio(fg.darkColor, bg.darkColor);
     if (ratio < minimum) {
       failures.add('$name: ${ratio.toStringAsFixed(2)} < $minimum');
     }
@@ -105,49 +164,65 @@ List<String> contrastFailures({required bool dark}) {
 }
 
 void main() {
-  group('Contrast (WCAG AA) for intended colour pairings', () {
-    test('light mode', () {
-      expect(contrastFailures(dark: false), isEmpty);
+  group('Colour tokens', () {
+    test('contrast (WCAG AA) for all intended pairings', () {
+      expect(contrastFailures(), isEmpty);
     });
 
-    test('dark mode', () {
-      expect(contrastFailures(dark: true), isEmpty);
+    test('every token is dark only: light and dark values are identical', () {
+      for (final (name, token) in allTokens) {
+        expect(
+          token.color.toARGB32(),
+          token.darkColor.toARGB32(),
+          reason: name,
+        );
+      }
     });
   });
 
   group('Theme appearance', () {
-    Future<Color> scaffoldColour(
+    Future<(Color, Brightness)> resolvedTheme(
       WidgetTester tester,
       CupertinoThemeData theme,
     ) async {
-      late Color captured;
+      late Color background;
+      late Brightness brightness;
       await tester.pumpWidget(
         CupertinoApp(
           theme: theme,
           home: Builder(
             builder: (context) {
-              captured = CupertinoTheme.of(context).scaffoldBackgroundColor;
+              background = CupertinoTheme.of(context).scaffoldBackgroundColor;
+              brightness = CupertinoTheme.brightnessOf(context);
               return const SizedBox();
             },
           ),
         ),
       );
-      return captured;
+      return (background, brightness);
     }
 
-    testWidgets('follows system light appearance', (tester) async {
+    testWidgets('stays dark when the system is light', (tester) async {
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-      final colour = await scaffoldColour(tester, AppTheme.build());
-      expect(colour.toARGB32(), AppColors.background.color.toARGB32());
+      final (colour, brightness) = await resolvedTheme(
+        tester,
+        AppTheme.build(),
+      );
+      expect(brightness, Brightness.dark);
+      expect(colour.toARGB32(), AppColors.background.darkColor.toARGB32());
     });
 
-    testWidgets('follows system dark appearance', (tester) async {
+    testWidgets('stays dark when the system is dark', (tester) async {
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-      final colour = await scaffoldColour(tester, AppTheme.build());
+      final (colour, brightness) = await resolvedTheme(
+        tester,
+        AppTheme.build(),
+      );
+      expect(brightness, Brightness.dark);
       expect(colour.toARGB32(), AppColors.background.darkColor.toARGB32());
     });
 
@@ -155,18 +230,18 @@ void main() {
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-      final colour = await scaffoldColour(
+      final (colour, brightness) = await resolvedTheme(
         tester,
         AppTheme.build(brightness: Brightness.dark),
       );
+      expect(brightness, Brightness.dark);
       expect(colour.toARGB32(), AppColors.background.darkColor.toARGB32());
     });
   });
 
-  testWidgets('Today greeting uses design-system text colours in dark mode', (
-    tester,
-  ) async {
-    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+  testWidgets('Today greeting uses design-system text colours', (tester) async {
+    // A light system must not change the app's colours.
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await tester.pumpWidget(const IndianFoodTrackerApp());
@@ -182,5 +257,42 @@ void main() {
       subtitle.style?.color?.toARGB32(),
       AppColors.textSecondary.darkColor.toARGB32(),
     );
+  });
+
+  group('Motion', () {
+    Future<Duration> resolved(WidgetTester tester, Duration base) async {
+      late Duration result;
+      await tester.pumpWidget(
+        Builder(
+          builder: (context) {
+            result = AppMotion.duration(context, base);
+            return const SizedBox();
+          },
+        ),
+      );
+      return result;
+    }
+
+    testWidgets('durations apply when Reduce Motion is off', (tester) async {
+      expect(await resolved(tester, AppMotion.emphasis), AppMotion.emphasis);
+    });
+
+    testWidgets('durations become zero when Reduce Motion is on', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+
+      for (final base in [
+        AppMotion.fast,
+        AppMotion.standard,
+        AppMotion.emphasis,
+      ]) {
+        expect(await resolved(tester, base), Duration.zero);
+      }
+    });
   });
 }

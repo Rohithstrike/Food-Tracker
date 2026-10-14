@@ -2,163 +2,185 @@ import 'package:flutter/cupertino.dart';
 
 /// Indian Food Tracker colour tokens.
 ///
-/// Direction: "Warm paper, quiet ink, one spice".
+/// Direction: "Ink & Saffron". A neutral near-black foundation, one warm
+/// accent used sparingly, and a matched family of macro colours.
 ///
-/// Every token is a [CupertinoDynamicColor] with a light and dark value.
-/// Screens must use these tokens — never raw hex colours.
+/// DARK ONLY. Every token is still a [CupertinoDynamicColor], but its light
+/// and dark values are identical, so `resolveFrom(context)` returns the same
+/// colour whatever the system appearance. This keeps every existing call
+/// site working unchanged.
 ///
-/// Resolve a token for the current appearance with:
-///   AppColors.textPrimary.resolveFrom(context)
-/// (Cupertino widgets and the theme resolve them automatically.)
+/// Screens must use these tokens, never raw hex colours.
 ///
-/// Contrast ratios below are WCAG 2.x, calculated for each colour against
-/// [background], [surface] and [surfaceSecondary]. The lowest value is shown.
-/// They are re-checked automatically in test/design_system_test.dart.
+/// Contrast ratios below are WCAG 2.x. "Worst" is the lowest value across
+/// [background], [surface], [surfaceElevated] and [surfaceSecondary] unless
+/// stated otherwise. They are re-checked in test/design_system_test.dart.
 abstract final class AppColors {
   // ---------------------------------------------------------------------------
-  // Surfaces
+  // Surfaces: depth comes from four neutral steps, not shadows or tints.
   // ---------------------------------------------------------------------------
 
-  /// Page background. Warm off-white in light mode; warm near-black in dark.
+  /// App background (canvas). Near-black, OLED-friendly, but not pure black
+  /// so the surfaces above it remain distinguishable.
   static const CupertinoDynamicColor background =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFFF6F4F1),
-        darkColor: Color(0xFF0F0E0D),
+        color: Color(0xFF07080A),
+        darkColor: Color(0xFF07080A),
       );
 
-  /// Grouped sections and cards sitting on [background].
+  /// Grouped cards and list rows sitting on [background].
   static const CupertinoDynamicColor surface =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFFFFFFFF),
-        darkColor: Color(0xFF1C1B19),
+        color: Color(0xFF131418),
+        darkColor: Color(0xFF131418),
       );
 
-  /// Sheets and floating controls. In dark mode, elevation is shown by a
-  /// lighter surface rather than shadows.
+  /// Sheets, the tab bar, the feedback banner and the search field.
   static const CupertinoDynamicColor surfaceElevated =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFFFFFFFF),
-        darkColor: Color(0xFF282624),
+        color: Color(0xFF1D1F24),
+        darkColor: Color(0xFF1D1F24),
       );
 
-  /// Input fields and pressed fills.
-  /// Rule: avoid small coloured text ([success], [carbs]) on this surface
-  /// in light mode — it falls below 4.5:1.
+  /// Unselected chips, stepper buttons and pressed rows.
+  /// Rule: no small status or macro-coloured text on this surface.
   static const CupertinoDynamicColor surfaceSecondary =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFFEEEBE6),
-        darkColor: Color(0xFF2A2825),
+        color: Color(0xFF27292F),
+        darkColor: Color(0xFF27292F),
       );
 
-  /// Hairline dividers and progress tracks. Decorative only — never the
-  /// sole carrier of meaning.
+  /// Hairlines inside grouped lists. Decorative only, never the sole
+  /// carrier of meaning.
   static const CupertinoDynamicColor separator =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFFDDD8D0),
-        darkColor: Color(0xFF3A3733),
+        color: Color(0xFF2E3036),
+        darkColor: Color(0xFF2E3036),
+      );
+
+  /// Unfilled part of rings and progress bars. Decorative: the filled part
+  /// carries the meaning and meets 3:1 against this track.
+  static const CupertinoDynamicColor track =
+      CupertinoDynamicColor.withBrightness(
+        color: Color(0xFF2A2C32),
+        darkColor: Color(0xFF2A2C32),
+      );
+
+  /// Essential outlines such as focus indicators. Worst: 3.25:1.
+  static const CupertinoDynamicColor strokeStrong =
+      CupertinoDynamicColor.withBrightness(
+        color: Color(0xFF74777F),
+        darkColor: Color(0xFF74777F),
       );
 
   // ---------------------------------------------------------------------------
   // Text
   // ---------------------------------------------------------------------------
 
-  /// Main text. Worst case: 14.60:1 light, 13.05:1 dark.
+  /// Titles, values and body text. Worst: 13.09:1.
   static const CupertinoDynamicColor textPrimary =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF1C1A17),
-        darkColor: Color(0xFFF4F1EC),
+        color: Color(0xFFF2F3F5),
+        darkColor: Color(0xFFF2F3F5),
       );
 
-  /// Supporting labels. Worst case: 5.73:1 light, 5.82:1 dark.
+  /// Labels, units and supporting text. Worst: 5.56:1.
   static const CupertinoDynamicColor textSecondary =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF605A53),
-        darkColor: Color(0xFFA9A29A),
+        color: Color(0xFF9DA0A9),
+        darkColor: Color(0xFF9DA0A9),
       );
 
-  /// Placeholders, hints and disabled text ONLY.
-  /// Below 4.5:1 (worst case 3.11:1 light, 3.32:1 dark), so never use it
-  /// for essential small text.
+  /// Hints, placeholders and empty-state text. Worst: 4.62:1, so it now
+  /// meets the normal-text requirement on every surface.
   static const CupertinoDynamicColor textTertiary =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF8A847C),
-        darkColor: Color(0xFF7D776F),
+        color: Color(0xFF8E919A),
+        darkColor: Color(0xFF8E919A),
+      );
+
+  /// Labels of DISABLED controls only. 2.35:1 to 3.24:1. WCAG does not
+  /// require contrast for disabled controls; never use for other text.
+  static const CupertinoDynamicColor textDisabled =
+      CupertinoDynamicColor.withBrightness(
+        color: Color(0xFF5E616A),
+        darkColor: Color(0xFF5E616A),
       );
 
   // ---------------------------------------------------------------------------
-  // Accent — cinnamon. Used only for actions and selection.
+  // Accent: saffron. Reserved for the calorie ring, the primary Add button
+  // and the selected tab.
   // ---------------------------------------------------------------------------
 
-  /// Buttons, links, selected states. Worst case: 5.22:1 light, 6.37:1 dark.
+  /// Worst: 8.27:1 on surfaces; 7.94:1 against [track].
   static const CupertinoDynamicColor accent =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF9A4A26),
-        darkColor: Color(0xFFE39A6C),
+        color: Color(0xFFFFB547),
+        darkColor: Color(0xFFFFB547),
       );
 
-  /// Text and icons placed ON [accent] (e.g. a filled button label).
-  /// 6.21:1 light, 7.53:1 dark.
+  /// Text and icons placed ON [accent]. 10.75:1.
   static const CupertinoDynamicColor onAccent =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFFFFFFFF),
-        darkColor: Color(0xFF1C1A17),
+        color: Color(0xFF101114),
+        darkColor: Color(0xFF101114),
       );
 
   // ---------------------------------------------------------------------------
-  // Status
+  // Status: always paired with a label or icon.
   // ---------------------------------------------------------------------------
 
-  /// Confirmation. Light: 4.78:1 on background, 4.42:1 on surfaceSecondary
-  /// (avoid small text there). Dark worst case: 6.82:1.
+  /// Confirmation. Worst: 7.82:1.
   static const CupertinoDynamicColor success =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF2D7A4C),
-        darkColor: Color(0xFF6CC28E),
+        color: Color(0xFF4CD68A),
+        darkColor: Color(0xFF4CD68A),
       );
 
-  /// Cautions. Worst case: 4.77:1 light, 7.71:1 dark.
+  /// Cautions. Worst: 7.13:1. Close in hue to [accent], so always labelled.
   static const CupertinoDynamicColor warning =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF8F5C00),
-        darkColor: Color(0xFFE3B556),
+        color: Color(0xFFFF9F45),
+        darkColor: Color(0xFFFF9F45),
       );
 
-  /// Errors. Worst case: 5.08:1 light, 5.81:1 dark.
+  /// Errors. Worst: 5.24:1.
   static const CupertinoDynamicColor error =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFFB3362B),
-        darkColor: Color(0xFFF2837A),
+        color: Color(0xFFFF6B6B),
+        darkColor: Color(0xFFFF6B6B),
       );
 
   // ---------------------------------------------------------------------------
-  // Nutrition — always shown WITH a text label; colour is never the only cue.
+  // Nutrition: one family with matched brightness. Always shown WITH a text
+  // label; colour is never the only cue.
   // ---------------------------------------------------------------------------
 
-  /// Protein — muted slate teal. Worst case: 4.99:1 light, 6.87:1 dark.
+  /// Protein: blue. Worst: 6.19:1; 5.95:1 against [track].
   static const CupertinoDynamicColor protein =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF2F6A88),
-        darkColor: Color(0xFF86B8D4),
+        color: Color(0xFF7FA8FF),
+        darkColor: Color(0xFF7FA8FF),
       );
 
-  /// Carbohydrates — turmeric ochre. Light: 4.61:1 on background,
-  /// 4.25:1 on surfaceSecondary (avoid small text there). Dark: 7.84:1.
+  /// Carbohydrates: teal (not yellow, so it never competes with saffron).
+  /// Worst: 7.73:1; 7.42:1 against [track].
   static const CupertinoDynamicColor carbs =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF8A6A12),
-        darkColor: Color(0xFFDDB963),
+        color: Color(0xFF5CCFC3),
+        darkColor: Color(0xFF5CCFC3),
       );
 
-  /// Fat — soft plum. Worst case: 5.29:1 light, 6.63:1 dark.
+  /// Fat: pink. Worst: 6.46:1; 6.20:1 against [track].
   static const CupertinoDynamicColor fat = CupertinoDynamicColor.withBrightness(
-    color: Color(0xFF8A4A7A),
-    darkColor: Color(0xFFCFA0C4),
+    color: Color(0xFFF28DBE),
+    darkColor: Color(0xFFF28DBE),
   );
 
-  /// Fibre — muted moss. Worst case: 5.08:1 light, 7.66:1 dark.
+  /// Fibre: green. Worst: 8.52:1; 8.18:1 against [track].
   static const CupertinoDynamicColor fibre =
       CupertinoDynamicColor.withBrightness(
-        color: Color(0xFF4F6B2E),
-        darkColor: Color(0xFFA9C48A),
+        color: Color(0xFF9FD66B),
+        darkColor: Color(0xFF9FD66B),
       );
 }
