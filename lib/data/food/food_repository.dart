@@ -3,6 +3,12 @@
 // Loads every provider once, checks ids are unique and correctly prefixed,
 // and answers search and lookup queries from an in-memory index, so search
 // is instant and works offline.
+//
+// LOADING IS ATOMIC: the catalogue is built in temporary structures and only
+// published once EVERY provider has loaded and passed validation. A failed
+// load publishes nothing, and calling load() again starts a fresh attempt.
+
+import 'dart:async';
 
 import '../../domain/food/food.dart';
 import 'food_provider.dart';
@@ -24,16 +30,53 @@ final class FoodRepository {
 
   Future<void>? _loading;
   FoodSearchIndex? _index;
-  final Map<String, Food> _byId = <String, Food>{};
-  final Map<String, DataSourceInfo> _sourceById = <String, DataSourceInfo>{};
+  Map<String, Food> _byId = const <String, Food>{};
+  Map<String, DataSourceInfo> _sourceById = const <String, DataSourceInfo>{};
 
+  /// True once a complete catalogue has been published.
   bool get isLoaded => _index != null;
 
-  /// Loads all providers. Safe to call more than once: loading happens once.
-  Future<void> load() => _loading ??= _load();
+  /// Loads all providers.
+  ///
+  /// Concurrent and repeated calls share one attempt, and a successful load
+  /// happens only once. If the attempt fails, nothing is published, the error
+  /// is rethrown, and the next call starts a new attempt.
+  Future<void> load() {
+    final Future<void>? inFlight = _loading;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final Future<void> attempt = _loadAtomically();
+    _loading = attempt;
+    // Registered before the caller can listen, so a failed attempt is
+    // cleared before any caller's error handling runs.
+    unawaited(
+      attempt.then<void>(
+        (_) {},
+        onError: (Object _) {
+          if (identical(_loading, attempt)) {
+            _loading = null;
+          }
+        },
+      ),
+    );
+    return attempt;
+  }
 
-  Future<void> _load() async {
+  Future<void> _loadAtomically() async {
+    final _Catalogue catalogue = await _build();
+    _byId = Map<String, Food>.unmodifiable(catalogue.byId);
+    _sourceById = Map<String, DataSourceInfo>.unmodifiable(
+      catalogue.sourceById,
+    );
+    _index = catalogue.index;
+  }
+
+  /// Builds a complete, validated catalogue without touching published state.
+  Future<_Catalogue> _build() async {
     final Set<String> sourceIds = <String>{};
+    final Map<String, Food> byId = <String, Food>{};
+    final Map<String, DataSourceInfo> sourceById = <String, DataSourceInfo>{};
     final List<Food> all = <Food>[];
 
     for (final FoodProvider provider in _providers) {
@@ -47,7 +90,7 @@ final class FoodRepository {
             'Food id "${food.id}" must start with "${source.idPrefix}".',
           );
         }
-        if (_byId.containsKey(food.id)) {
+        if (byId.containsKey(food.id)) {
           throw StateError('Duplicate food id: ${food.id}');
         }
         if (source.isSample && !food.isSample) {
@@ -56,12 +99,16 @@ final class FoodRepository {
             'marked as sample data.',
           );
         }
-        _byId[food.id] = food;
-        _sourceById[food.id] = source;
+        byId[food.id] = food;
+        sourceById[food.id] = source;
         all.add(food);
       }
     }
-    _index = FoodSearchIndex(all);
+    return _Catalogue(
+      byId: byId,
+      sourceById: sourceById,
+      index: FoodSearchIndex(all),
+    );
   }
 
   FoodSearchIndex _requireIndex() {
@@ -107,4 +154,17 @@ final class FoodRepository {
     result.sort((Food a, Food b) => a.name.compareTo(b.name));
     return List<Food>.unmodifiable(result);
   }
+}
+
+/// A fully built catalogue, ready to publish.
+final class _Catalogue {
+  const _Catalogue({
+    required this.byId,
+    required this.sourceById,
+    required this.index,
+  });
+
+  final Map<String, Food> byId;
+  final Map<String, DataSourceInfo> sourceById;
+  final FoodSearchIndex index;
 }

@@ -11,10 +11,27 @@
 
 import '../../domain/food/food.dart';
 
-/// Lower-case, letters and digits only (any script), single-spaced.
+/// Invisible joiner characters (ZWNJ, ZWJ, BOM). They carry no meaning for
+/// search, so they are removed rather than treated as word separators.
+final RegExp _invisibleJoiners = RegExp('[\u200C\u200D\uFEFF]');
+
+/// Anything that is not a letter, a digit or a combining mark.
+///
+/// Combining marks (Unicode category M) MUST be kept: in Tamil and other
+/// Indic scripts, vowel signs and the pulli are marks. Dropping them splits
+/// a word into meaningless fragments and makes different words look equal.
+final RegExp _nonSearchable = RegExp(r'[^\p{L}\p{N}\p{M}]+', unicode: true);
+
+/// Lower-case, letters, digits and combining marks only (any script),
+/// single-spaced.
+///
+/// This does not apply canonical Unicode normalisation (NFC), which would
+/// need a package. Catalogue text should therefore be authored in a
+/// consistent form.
 String normaliseSearchText(String text) => text
     .toLowerCase()
-    .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
+    .replaceAll(_invisibleJoiners, '')
+    .replaceAll(_nonSearchable, ' ')
     .trim();
 
 final class FoodSearchIndex {
