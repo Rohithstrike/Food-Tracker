@@ -12,10 +12,23 @@
 // STORAGE: toJson/fromJson produce plain maps (text, numbers, lists), ready
 // for the persistence batch. Enum NAMES are stored, never indexes, so the
 // order of enum values can never corrupt saved data.
+//
+// VALIDATION: fromJson treats stored data as untrusted. Every problem,
+// whether a wrong type, an out-of-range number, an inconsistent combination
+// of fields or a broken entry structure, is reported as a FormatException,
+// so a storage layer needs to handle only one kind of error.
 
 import '../food/food.dart';
+import '../food/serving.dart';
 import '../nutrition/nutrition.dart';
 import '../nutrition/nutrition_engine.dart';
+
+/// Largest stored quantity, in thousandths of a serving. This is the limit
+/// the NutritionEngine itself enforces.
+const int _maxQuantityMilli = NutritionEngine.maxQuantity * 1000;
+
+/// Largest stored weight of one component, in milligrams (the engine's limit).
+const int _maxTotalMilligrams = NutritionEngine.maxTotalMilligrams;
 
 /// A calendar date in the user's local time zone, with no time of day.
 final class LocalDate implements Comparable<LocalDate> {
@@ -131,6 +144,15 @@ final class EntryComponent {
         'must be positive when set',
       );
     }
+    if (factor != null && !nutrition.isEstimate) {
+      // A yield conversion is an estimate. Day and entry totals are built
+      // from the nutrition snapshot alone, so the snapshot must say so.
+      throw ArgumentError.value(
+        factor,
+        'yieldFactorPermille',
+        'requires the nutrition snapshot to be marked as an estimate',
+      );
+    }
   }
 
   /// Snapshot of [food] as it was calculated now.
@@ -153,7 +175,17 @@ final class EntryComponent {
     );
   }
 
+  /// Reads a stored component. Any problem is reported as a
+  /// [FormatException].
   factory EntryComponent.fromJson(Map<String, Object?> json) {
+    try {
+      return EntryComponent._parse(json);
+    } on ArgumentError catch (error) {
+      throw FormatException('Invalid stored component: ${error.message}');
+    }
+  }
+
+  static EntryComponent _parse(Map<String, Object?> json) {
     final Map<String, Object?> rawNutrients = _asMap(
       json['nutrients'],
       'nutrients',
@@ -175,25 +207,47 @@ final class EntryComponent {
       known[kind] = NutrientAmount.milli(milli);
     }
 
+    final ComponentRole role = _enumByName(
+      ComponentRole.values,
+      json['role'],
+      'role',
+    );
+    final DataStatus dataStatus = _enumByName(
+      DataStatus.values,
+      json['dataStatus'],
+      'dataStatus',
+    );
+    final String servingId = _string(json, 'servingId');
+    final int quantityMilli = _int(json, 'quantityMilli');
+    final int totalMilligrams = _int(json, 'totalMilligrams');
+    final bool isSample = _bool(json, 'isSample');
+    final bool isEstimate = _bool(json, 'isEstimate');
+
+    _validateSnapshot(
+      role: role,
+      dataStatus: dataStatus,
+      servingId: servingId,
+      quantityMilli: quantityMilli,
+      totalMilligrams: totalMilligrams,
+      isSample: isSample,
+      isEstimate: isEstimate,
+    );
+
     return EntryComponent(
-      role: _enumByName(ComponentRole.values, json['role'], 'role'),
+      role: role,
       foodName: _string(json, 'foodName'),
-      dataStatus: _enumByName(
-        DataStatus.values,
-        json['dataStatus'],
-        'dataStatus',
-      ),
+      dataStatus: dataStatus,
       foodState: _enumByName(FoodState.values, json['foodState'], 'foodState'),
       yieldFactorPermille: _optionalInt(json, 'yieldFactorPermille'),
       nutrition: CalculatedNutrition(
         foodId: _string(json, 'foodId'),
-        servingId: _string(json, 'servingId'),
+        servingId: servingId,
         variantId: _optionalString(json, 'variantId'),
-        quantityMilli: _int(json, 'quantityMilli'),
-        totalMilligrams: _int(json, 'totalMilligrams'),
+        quantityMilli: quantityMilli,
+        totalMilligrams: totalMilligrams,
         nutrients: NutrientProfile(known),
-        isSample: _bool(json, 'isSample'),
-        isEstimate: _bool(json, 'isEstimate'),
+        isSample: isSample,
+        isEstimate: isEstimate,
         assumptions: _stringList(json, 'assumptions'),
       ),
     );
@@ -213,7 +267,8 @@ final class EntryComponent {
 
   /// Reserved for raw/cooked weight conversion (cooked = raw x factor/1000).
   /// Always null for now: no conversion runs until documented cooking-yield
-  /// data is added. When set, the component counts as an estimate.
+  /// data is added. When set, the snapshot must already be marked as an
+  /// estimate, so totals and the component agree.
   final int? yieldFactorPermille;
 
   String get foodId => nutrition.foodId;
@@ -268,7 +323,17 @@ final class LogEntry {
     }
   }
 
+  /// Reads a stored entry. Any problem, including a broken entry structure,
+  /// is reported as a [FormatException].
   factory LogEntry.fromJson(Map<String, Object?> json) {
+    try {
+      return LogEntry._parse(json);
+    } on ArgumentError catch (error) {
+      throw FormatException('Invalid stored entry: ${error.message}');
+    }
+  }
+
+  static LogEntry _parse(Map<String, Object?> json) {
     final int version = _int(json, 'schemaVersion');
     if (version != schemaVersion) {
       throw FormatException('Unsupported log entry schema version: $version');
@@ -355,6 +420,61 @@ final class LogEntry {
       for (final EntryComponent component in components) component.toJson(),
     ],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Snapshot rules for stored components.
+//
+// Each rule describes something NutritionEngine and EntryBuilder always
+// produce, so a valid snapshot can never break one. A stored value that does
+// break one is corrupt or foreign, and is rejected instead of being shown.
+// ---------------------------------------------------------------------------
+
+void _validateSnapshot({
+  required ComponentRole role,
+  required DataStatus dataStatus,
+  required String servingId,
+  required int quantityMilli,
+  required int totalMilligrams,
+  required bool isSample,
+  required bool isEstimate,
+}) {
+  if (quantityMilli <= 0 || quantityMilli > _maxQuantityMilli) {
+    throw FormatException(
+      'quantityMilli must be between 1 and $_maxQuantityMilli: $quantityMilli',
+    );
+  }
+  // Zero is allowed: the engine can round a tiny portion of a light serving
+  // to 0 mg. Negative or oversized weights are never valid.
+  if (totalMilligrams < 0 || totalMilligrams > _maxTotalMilligrams) {
+    throw FormatException(
+      'totalMilligrams must be between 0 and $_maxTotalMilligrams: '
+      '$totalMilligrams',
+    );
+  }
+  // The built-in gram serving weighs exactly 1000 mg per unit, so the stored
+  // weight in mg always equals the stored quantity in thousandths.
+  if (servingId == Serving.gramId && totalMilligrams != quantityMilli) {
+    throw FormatException(
+      'A gram serving of $quantityMilli milli-grams cannot weigh '
+      '$totalMilligrams mg.',
+    );
+  }
+  if (isSample != (dataStatus == DataStatus.sample)) {
+    throw FormatException(
+      'isSample ($isSample) contradicts dataStatus (${dataStatus.name}).',
+    );
+  }
+  if (dataStatus == DataStatus.recipeEstimate && !isEstimate) {
+    throw const FormatException(
+      'A recipe-estimate component must be marked as an estimate.',
+    );
+  }
+  if (role == ComponentRole.oil && !isEstimate) {
+    throw const FormatException(
+      'An added-oil component must be marked as an estimate.',
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
